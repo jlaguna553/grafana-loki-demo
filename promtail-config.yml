@@ -1,0 +1,64 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    # Lotes mas grandes -> menos round-trips al ingerir volumenes altos
+    batchwait: 1s
+    batchsize: 1048576
+    backoff_config:
+      min_period: 500ms
+      max_period: 5s
+      max_retries: 10
+
+scrape_configs:
+  # ---------------------------------------------------------------
+  # 1) access.log - nginx "common log format". SIN tiempo de respuesta.
+  # ---------------------------------------------------------------
+  - job_name: nginx-demo-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx_access
+          # Path explicito: si fuera *.log tragaria tambien transactions.log,
+          # que tiene otro formato y rompería el parseo.
+          __path__: /var/log/app-logs/access.log
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<ip>[^ ]+) - - \[(?P<timestamp>[^\]]+)\] "(?P<method>[A-Z]+) (?P<endpoint>[^ ]+) [^"]*" (?P<status>\d{3}) (?P<bytes>\d+)'
+      - timestamp:
+          source: timestamp
+          format: "02/Jan/2006:15:04:05 -0700"
+      - labels:
+          status:
+
+  # ---------------------------------------------------------------
+  # 2) transactions.log - nginx "combined + timing".
+  #    Incluye $request_time y $upstream_response_time.
+  # ---------------------------------------------------------------
+  - job_name: nginx-transactions
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx_timed
+          __path__: /var/log/app-logs/transactions.log
+
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<ip>[^ ]+) - - \[(?P<timestamp>[^\]]+)\] "(?P<method>[A-Z]+) (?P<endpoint>[^ ]+) [^"]*" (?P<status>\d{3}) (?P<bytes>\d+) "[^"]*" "[^"]*" (?P<request_time>[0-9.]+) (?P<upstream_time>[0-9.]+) (?P<txn>[^ ]+)'
+      - timestamp:
+          source: timestamp
+          format: "02/Jan/2006:15:04:05 -0700"
+      # Solo status y endpoint como labels: 4 x 5 = 20 streams.
+      # request_time y txn NO son labels (serian cardinalidad infinita);
+      # se extraen en query-time con | pattern.
+      - labels:
+          status:
+          endpoint:

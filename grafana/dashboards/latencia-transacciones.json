@@ -1,0 +1,851 @@
+{
+  "uid": "latencia-transacciones",
+  "title": "Latencia de Transacciones — nginx timed",
+  "tags": [
+    "loki",
+    "demo",
+    "latencia"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "endpoint",
+        "label": "Endpoint",
+        "type": "query",
+        "datasource": {
+          "type": "loki",
+          "uid": "loki"
+        },
+        "query": {
+          "label": "endpoint",
+          "stream": "{job=\"nginx_timed\"}",
+          "type": 1,
+          "refId": "LokiVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Resumen",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Latencia media global",
+      "description": "PONDERADA: suma de request_time / numero de peticiones. No es avg(avg_over_time(...)).",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum(sum_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | unwrap request_time [$__range])) / sum(count_over_time({job=\"nginx_timed\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "p95 global",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "quantile_over_time(0.95, {job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | drop status, endpoint, filename | unwrap request_time [$__range])"
+        }
+      ],
+      "description": "p95 sobre TODAS las peticiones. El | drop colapsa los 20 streams (status x endpoint) en uno: sin el, quantile_over_time devuelve 20 series y el stat pinta una al azar."
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Peor transaccion del rango",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "red"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "max(max_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | unwrap request_time [$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Transacciones > 2s",
+      "description": "Filtro numerico en LogQL: | request_time > 2 opera sobre el campo extraido, no sobre un label.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum(count_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | request_time > 2 [$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "Tiempo de respuesta",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Tiempo medio de respuesta por endpoint",
+      "description": "LA GRAFICA QUE PEDISTE. avg_over_time sobre request_time, agrupado por el label endpoint. Busca el pico de /checkout alrededor del dia 12.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      },
+      "maxDataPoints": 400,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "custom": {
+            "fillOpacity": 0,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "{{endpoint}}",
+          "expr": "avg_over_time({job=\"nginx_timed\", endpoint=~\"$endpoint\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | unwrap request_time [$__interval]) by (endpoint)"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "p50 / p90 / p99 globales",
+      "description": "La media esconde la cola. Fijate cuanto se separa el p99 del p50: esa distancia ES el problema de latencia.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      },
+      "maxDataPoints": 400,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p90"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p50 (mediana)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "media"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "p50 (mediana)",
+          "expr": "quantile_over_time(0.50, {job=\"nginx_timed\", endpoint=~\"$endpoint\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | drop status, endpoint, filename | unwrap request_time [$__interval])"
+        },
+        {
+          "refId": "B",
+          "queryType": "range",
+          "legendFormat": "p90",
+          "expr": "quantile_over_time(0.90, {job=\"nginx_timed\", endpoint=~\"$endpoint\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | drop status, endpoint, filename | unwrap request_time [$__interval])"
+        },
+        {
+          "refId": "C",
+          "queryType": "range",
+          "legendFormat": "p99",
+          "expr": "quantile_over_time(0.99, {job=\"nginx_timed\", endpoint=~\"$endpoint\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | drop status, endpoint, filename | unwrap request_time [$__interval])"
+        },
+        {
+          "refId": "D",
+          "queryType": "range",
+          "legendFormat": "media",
+          "expr": "avg_over_time({job=\"nginx_timed\", endpoint=~\"$endpoint\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | drop status, endpoint, filename | unwrap request_time [$__interval])"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Latencia media por status HTTP",
+      "description": "Los 500 son timeouts y arrastran la media global hacia arriba. Los 404 ni tocan el backend.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "maxDataPoints": 300,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "custom": {
+            "fillOpacity": 0,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "500"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean"
+          ],
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "{{status}}",
+          "expr": "avg_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | unwrap request_time [$__interval]) by (status)"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Overhead de nginx (request_time - upstream_response_time)",
+      "description": "La diferencia entre lo que tarda el backend y lo que ve el cliente: red, TLS, buffering. Si se dispara, el problema NO esta en tu aplicacion. El | drop es obligatorio aqui: sin el saldrian 20 lineas por metrica.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "maxDataPoints": 300,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 4,
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "request_time",
+          "expr": "avg_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | drop status, endpoint, filename | unwrap request_time [$__interval])"
+        },
+        {
+          "refId": "B",
+          "queryType": "range",
+          "legendFormat": "upstream_response_time",
+          "expr": "avg_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <_> <upstream_time> <_>` | drop status, endpoint, filename | unwrap upstream_time [$__interval])"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Distribucion y apdex",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 25
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "barchart",
+      "title": "Latencia media por endpoint (rango completo)",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 26
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "legend": {
+          "showLegend": false
+        },
+        "xTickLabelRotation": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "legendFormat": "{{endpoint}}",
+          "expr": "avg_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | unwrap request_time [$__range]) by (endpoint)"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Apdex aproximado (T = 0.5s)",
+      "description": "Fraccion de peticiones bajo el umbral de satisfaccion. 1.0 = todo rapido. Cae en picado durante el incidente.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 26
+      },
+      "maxDataPoints": 300,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "min": 0,
+          "max": 1,
+          "custom": {
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.9
+              },
+              {
+                "color": "green",
+                "value": 0.98
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "apdex",
+          "expr": "sum(count_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | request_time < 0.5 [$__interval])) / sum(count_over_time({job=\"nginx_timed\"}[$__interval]))"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Transacciones lentas (> 2s) por minuto",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 26
+      },
+      "maxDataPoints": 300,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 40,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "drawStyle": "bars"
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "orange"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "lentas",
+          "expr": "sum(count_over_time({job=\"nginx_timed\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <_> \"<_>\" \"<_>\" <request_time> <_> <_>` | request_time > 2 [$__interval]))"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "Logs",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "id": 31,
+      "type": "logs",
+      "title": "Transacciones mas lentas (> 2s) — reformateadas",
+      "description": "Filtro numerico + line_format. Cada linea trae su txn id para correlacionar con trazas.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 35
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "maxLines": 150,
+          "expr": "{job=\"nginx_timed\", endpoint=~\"$endpoint\"} | pattern `<ip> - - [<_>] \"<method> <path> <_>\" <code> <_> \"<_>\" \"<_>\" <request_time> <upstream_time> <txn>` | request_time > 2 | line_format `{{.request_time}}s  [{{.code}}] {{.method}} {{.path}}  upstream={{.upstream_time}}s  {{.txn}}  ip={{.ip}}`"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "logs",
+      "title": "Transacciones en crudo",
+      "description": "La linea original, formato nginx combined + timing. Los dos numeros antes del txn id son request_time y upstream_response_time.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 47
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "maxLines": 150,
+          "expr": "{job=\"nginx_timed\", endpoint=~\"$endpoint\"}"
+        }
+      ]
+    }
+  ]
+}

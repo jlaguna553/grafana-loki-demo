@@ -1,0 +1,12 @@
+# Logs generados: 425 MB. GitHub rechaza ficheros >100 MB.
+# Se regeneran con los scripts de generate_*.py
+logs/
+promtail-data/
+
+# Copias de seguridad de las iteraciones de configuración
+*.bak
+
+__pycache__/
+*.py[cod]
+.DS_Store
+.vercel

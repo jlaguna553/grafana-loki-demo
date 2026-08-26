@@ -1,0 +1,68 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  grpc_server_max_recv_msg_size: 104857600
+  grpc_server_max_send_msg_size: 104857600
+
+common:
+  path_prefix: /tmp/loki
+  storage:
+    filesystem:
+      chunks_directory: /tmp/loki/chunks
+      rules_directory: /tmp/loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2020-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+ingester:
+  # ---- CAUSA REAL DEL ERROR "entry too far behind" ----
+  # Con unordered_writes (default), el ingester acepta entradas atrasadas
+  # solo hasta max_chunk_age/2 por detras del timestamp mas nuevo del stream.
+  # Default 2h -> ventana de 1h. Los logs generados abarcan 30 dias barajados.
+  # 1560h / 2 = 32.5 dias de tolerancia hacia atras.
+  max_chunk_age: 1560h
+  # Se corta el chunk por tamano/inactividad para que la memoria no crezca
+  # a pesar del max_chunk_age enorme.
+  chunk_idle_period: 5m
+  chunk_target_size: 1572864
+  chunk_encoding: snappy
+
+limits_config:
+  # Desactiva el chequeo del distributor (previo al del ingester)
+  reject_old_samples: false
+  reject_old_samples_max_age: 8760h
+  creation_grace_period: 8760h
+  unordered_writes: true
+
+  # Ingesta: sin esto el push de 400MB en un solo stream se estrangula
+  ingestion_rate_mb: 512
+  ingestion_burst_size_mb: 1024
+  per_stream_rate_limit: 512MB
+  per_stream_rate_limit_burst: 1024MB
+
+  # Consultas sobre 30 dias de historico (default max_query_length = 721h)
+  max_query_length: 0
+  max_query_lookback: 0
+  max_query_series: 100000
+  max_entries_limit_per_query: 10000
+  split_queries_by_interval: 24h
+
+  max_streams_per_user: 0
+  max_global_streams_per_user: 0
+
+table_manager:
+  retention_deletes_enabled: false
+  retention_period: 0

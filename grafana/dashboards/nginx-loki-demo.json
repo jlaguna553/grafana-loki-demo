@@ -1,0 +1,419 @@
+{
+  "uid": "nginx-loki-demo",
+  "title": "Nginx Access Logs — Demo Loki",
+  "tags": ["loki", "demo", "nginx"],
+  "timezone": "browser",
+  "editable": true,
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "",
+  "time": { "from": "now-7d", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "status",
+        "label": "Status HTTP",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": { "label": "status", "refId": "LokiVariableQueryEditor-VariableQuery", "type": 1 },
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Peticiones totales",
+      "description": "count_over_time sobre todo el rango visible ($__range).",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "text" } },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "none", "graphMode": "none", "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum(count_over_time({job=\"nginx_access\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Errores 5xx",
+      "description": "Filtra por el label indexado status. Es mucho mas barato que parsear la linea.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value", "graphMode": "none", "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum(count_over_time({job=\"nginx_access\", status=\"500\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "% de error (4xx + 5xx)",
+      "description": "Division de dos agregaciones LogQL. Ojo: si el denominador es 0 el panel queda vacio, no en 0.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 25 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value", "graphMode": "none", "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "100 * sum(count_over_time({job=\"nginx_access\", status=~\"4..|5..\"}[$__range])) / sum(count_over_time({job=\"nginx_access\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Bytes promedio por respuesta",
+      "description": "Promedio PONDERADO: suma de bytes / numero de lineas. No es avg(avg_over_time(...)).",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "decbytes", "decimals": 0, "color": { "mode": "fixed", "fixedColor": "blue" } },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "value", "graphMode": "none", "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "expr": "sum(sum_over_time({job=\"nginx_access\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <bytes_sent>` | unwrap bytes_sent [$__range])) / sum(count_over_time({job=\"nginx_access\"}[$__range]))"
+        }
+      ]
+    },
+
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Tasa de peticiones por status (req/s)",
+      "description": "rate() sobre un label indexado: la query mas barata del dashboard. Empieza por aqui.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 4 },
+      "maxDataPoints": 300,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "fillOpacity": 20, "lineWidth": 1, "showPoints": "never", "stacking": { "mode": "normal", "group": "A" } }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "{status=\"500\"}" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+          { "matcher": { "id": "byName", "options": "{status=\"404\"}" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"], "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "{{status}}",
+          "expr": "sum by (status) (rate({job=\"nginx_access\", status=~\"$status\"}[$__interval]))"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Promedio de bytes por metodo HTTP",
+      "description": "avg_over_time + unwrap. El campo se llama bytes_sent y NO bytes: bytes() es una funcion de conversion de LogQL y | unwrap bytes seria ambiguo.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 4 },
+      "maxDataPoints": 300,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "custom": { "fillOpacity": 0, "lineWidth": 2, "showPoints": "never", "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean"], "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "{{method}}",
+          "expr": "avg_over_time({job=\"nginx_access\"} | pattern `<_> - - [<_>] \"<method> <endpoint> <_>\" <_> <bytes_sent>` | unwrap bytes_sent [$__interval]) by (method)"
+        }
+      ]
+    },
+
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "p95 de bytes por endpoint",
+      "description": "quantile_over_time. Compara la forma de esta grafica con la del promedio: el p95 revela la cola que la media esconde.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 13 },
+      "maxDataPoints": 300,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "custom": { "fillOpacity": 0, "lineWidth": 2, "showPoints": "never", "spanNulls": true }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max"], "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "p95 {{endpoint}}",
+          "expr": "quantile_over_time(0.95, {job=\"nginx_access\"} | pattern `<_> - - [<_>] \"<_> <endpoint> <_>\" <_> <bytes_sent>` | unwrap bytes_sent [$__interval]) by (endpoint)"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Promedio global ponderado vs. promedio de promedios",
+      "description": "Las dos lineas casi coinciden porque los datos son sinteticos y uniformes. Con trafico real desbalanceado se separan: A es el correcto.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 13 },
+      "maxDataPoints": 200,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "custom": { "fillOpacity": 0, "lineWidth": 2, "showPoints": "never", "spanNulls": true }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "B — avg de avgs (no ponderado)" }, "properties": [{ "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }] }
+        ]
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "desc" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "A — ponderado (correcto)",
+          "expr": "sum(sum_over_time({job=\"nginx_access\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <bytes_sent>` | unwrap bytes_sent [$__interval])) / sum(count_over_time({job=\"nginx_access\"}[$__interval]))"
+        },
+        {
+          "refId": "B",
+          "queryType": "range",
+          "legendFormat": "B — avg de avgs (no ponderado)",
+          "expr": "avg(avg_over_time({job=\"nginx_access\"} | pattern `<_> - - [<_>] \"<_> <_> <_>\" <_> <bytes_sent>` | unwrap bytes_sent [$__interval]))"
+        }
+      ]
+    },
+
+    {
+      "id": 20,
+      "type": "barchart",
+      "title": "Peticiones por endpoint",
+      "description": "Query instantanea sobre $__range. El endpoint no es label: se extrae con pattern en query-time.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 22 },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 80, "lineWidth": 0 } },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "legend": { "showLegend": false },
+        "xTickLabelRotation": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "legendFormat": "{{endpoint}}",
+          "expr": "sum by (endpoint) (count_over_time({job=\"nginx_access\"} | pattern `<_> - - [<_>] \"<_> <endpoint> <_>\" <_> <_>` [$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "piechart",
+      "title": "Distribucion por status",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 22 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["name", "percent"],
+        "legend": { "displayMode": "list", "placement": "right", "showLegend": true },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "instant",
+          "legendFormat": "{{status}}",
+          "expr": "sum by (status) (count_over_time({job=\"nginx_access\"}[$__range]))"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Volumen de logs ingerido (bytes/s)",
+      "description": "bytes_rate mide el tamano de las LINEAS de log, no el campo bytes_sent. Util para dimensionar la ingesta de Loki.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 22 },
+      "maxDataPoints": 300,
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "custom": { "fillOpacity": 30, "lineWidth": 1, "showPoints": "never" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "tooltip": { "mode": "single", "sort": "none" }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "legendFormat": "ingesta",
+          "expr": "sum(bytes_rate({job=\"nginx_access\"}[$__interval]))"
+        }
+      ]
+    },
+
+    {
+      "id": 30,
+      "type": "logs",
+      "title": "Logs en crudo — todos",
+      "description": "Panel de tipo logs. Haz clic en una linea para abrir Log details y ver los labels detectados.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 30 },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "maxLines": 200,
+          "expr": "{job=\"nginx_access\", status=~\"$status\"}"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "logs",
+      "title": "Solo errores 5xx",
+      "description": "Filtrado por label indexado: Loki ni siquiera abre los chunks de los demas status.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 11, "w": 12, "x": 0, "y": 41 },
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "maxLines": 100,
+          "expr": "{job=\"nginx_access\", status=\"500\"}"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "logs",
+      "title": "Checkout — logs parseados y reformateados",
+      "description": "Ejemplo de pattern + line_format: la linea que ves no es la original, esta reescrita en query-time.",
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 11, "w": 12, "x": 12, "y": 41 },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "range",
+          "maxLines": 100,
+          "expr": "{job=\"nginx_access\"} | pattern `<ip> - - [<_>] \"<method> <endpoint> <_>\" <_> <bytes_sent>` | endpoint = `/checkout` | line_format `{{.status}} {{.method}} {{.endpoint}} desde {{.ip}} ({{.bytes_sent}} bytes)`"
+        }
+      ]
+    }
+  ]
+}

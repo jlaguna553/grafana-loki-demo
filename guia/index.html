@@ -1,0 +1,1497 @@
+<title>Loki de Cero a Query</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+:root{
+  --ground:#F7F8FA;
+  --surface:#FFFFFF;
+  --surface-sunk:#EFF2F6;
+  --ink:#16202E;
+  --ink-soft:#54637A;
+  --ink-faint:#8494A8;
+  --rule:#DCE2EA;
+  --rule-strong:#C3CDDA;
+  --accent:#B4531A;
+  --accent-soft:#F3E2D5;
+  --steel:#1E5F8C;
+  --steel-soft:#DDE9F2;
+  --bad:#A8271F;
+  --bad-soft:#F7E0DE;
+  --good:#2C6A50;
+  --good-soft:#DDEDE5;
+  --code-ground:#141C26;
+  --code-ink:#DCE4EE;
+
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+
+  --measure:68ch;
+  --rail:16rem;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D131A;
+    --surface:#141C25;
+    --surface-sunk:#1B242F;
+    --ink:#E2E9F1;
+    --ink-soft:#9AAABC;
+    --ink-faint:#6D7E92;
+    --rule:#26313E;
+    --rule-strong:#374757;
+    --accent:#E8944A;
+    --accent-soft:#33241A;
+    --steel:#72B4DE;
+    --steel-soft:#162833;
+    --bad:#E8756A;
+    --bad-soft:#331D1B;
+    --good:#63BB95;
+    --good-soft:#152720;
+    --code-ground:#080C11;
+    --code-ink:#D3DCE7;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D131A;
+  --surface:#141C25;
+  --surface-sunk:#1B242F;
+  --ink:#E2E9F1;
+  --ink-soft:#9AAABC;
+  --ink-faint:#6D7E92;
+  --rule:#26313E;
+  --rule-strong:#374757;
+  --accent:#E8944A;
+  --accent-soft:#33241A;
+  --steel:#72B4DE;
+  --steel-soft:#162833;
+  --bad:#E8756A;
+  --bad-soft:#331D1B;
+  --good:#63BB95;
+  --good-soft:#152720;
+  --code-ground:#080C11;
+  --code-ink:#D3DCE7;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--f-body);
+  font-size:17px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+.layout{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);gap:0;align-items:start}
+
+/* ---------- rail ---------- */
+.rail{
+  position:sticky;top:0;height:100vh;overflow-y:auto;
+  padding:2.5rem 1.25rem 3rem 2rem;
+  border-right:1px solid var(--rule);
+  background:var(--surface);
+  display:flex;flex-direction:column;gap:1.75rem;
+}
+.rail-brand{display:flex;flex-direction:column;gap:.15rem}
+.rail-brand b{font-family:var(--f-display);font-weight:700;font-size:.95rem;letter-spacing:-.01em}
+.rail-brand span{font-family:var(--f-mono);font-size:.66rem;color:var(--ink-faint);letter-spacing:.08em;text-transform:uppercase}
+.rail nav{display:flex;flex-direction:column;gap:.1rem}
+.rail nav a{
+  display:grid;grid-template-columns:1.6rem 1fr;gap:.4rem;
+  padding:.4rem .5rem;border-radius:3px;
+  font-family:var(--f-display);font-size:.83rem;font-weight:500;line-height:1.3;
+  color:var(--ink-soft);text-decoration:none;
+}
+.rail nav a .n{font-family:var(--f-mono);font-size:.7rem;color:var(--ink-faint);padding-top:.12em}
+.rail nav a:hover{background:var(--surface-sunk);color:var(--ink)}
+.rail nav a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ---------- main ---------- */
+main{padding:0 3rem 8rem;min-width:0}
+.wrap{max-width:var(--measure);margin:0 auto}
+.bleed{max-width:calc(var(--measure) + 12rem);margin:0 auto}
+
+.hero{
+  max-width:calc(var(--measure) + 12rem);margin:0 auto;
+  padding:5rem 0 3rem;
+}
+.eyebrow{
+  font-family:var(--f-mono);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 1.25rem;
+}
+h1{
+  font-family:var(--f-display);font-weight:700;font-size:clamp(2.4rem,5.5vw,3.9rem);
+  line-height:1.02;letter-spacing:-.03em;margin:0 0 1.25rem;text-wrap:balance;
+}
+.standfirst{font-size:1.22rem;line-height:1.55;color:var(--ink-soft);max-width:56ch;margin:0}
+.hero-meta{
+  display:flex;flex-wrap:wrap;gap:.5rem;margin-top:2rem;
+  font-family:var(--f-mono);font-size:.72rem;
+}
+.hero-meta span{
+  padding:.3rem .6rem;border:1px solid var(--rule-strong);border-radius:2px;color:var(--ink-soft);
+}
+
+.chapter{padding-top:4.5rem;scroll-margin-top:1rem}
+.chapter-head{max-width:calc(var(--measure) + 12rem);margin:0 auto 2rem;border-top:2px solid var(--ink);padding-top:1rem}
+.chapter-num{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.14em;color:var(--accent);text-transform:uppercase}
+h2{font-family:var(--f-display);font-weight:700;font-size:clamp(1.7rem,3.4vw,2.4rem);line-height:1.1;letter-spacing:-.022em;margin:.35rem 0 0;text-wrap:balance}
+h3{font-family:var(--f-display);font-weight:600;font-size:1.22rem;letter-spacing:-.012em;margin:2.75rem 0 .6rem;text-wrap:balance}
+h4{font-family:var(--f-display);font-weight:600;font-size:.97rem;letter-spacing:-.005em;margin:1.9rem 0 .4rem}
+p{margin:0 0 1.1rem}
+.wrap>ul,.wrap>ol{margin:0 0 1.2rem;padding-left:1.3rem}
+li{margin-bottom:.5rem}
+a{color:var(--steel);text-underline-offset:2px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+strong{font-weight:600}
+code{
+  font-family:var(--f-mono);font-size:.845em;
+  background:var(--surface-sunk);padding:.1em .35em;border-radius:3px;
+  border:1px solid var(--rule);
+}
+.lead{font-size:1.1rem;color:var(--ink-soft)}
+
+/* ---------- code blocks ---------- */
+.code{
+  background:var(--code-ground);color:var(--code-ink);
+  border-radius:5px;overflow:hidden;margin:1.5rem 0 1.75rem;
+  border:1px solid var(--rule);
+}
+.code-bar{
+  display:flex;justify-content:space-between;align-items:center;gap:1rem;
+  padding:.5rem .9rem;border-bottom:1px solid rgba(255,255,255,.09);
+  font-family:var(--f-mono);font-size:.7rem;letter-spacing:.05em;
+  color:#93A4B8;background:rgba(255,255,255,.03);
+}
+.code-bar .tag{color:var(--accent);text-transform:uppercase;letter-spacing:.12em}
+.code pre{
+  margin:0;padding:1rem 1.1rem;overflow-x:auto;
+  font-family:var(--f-mono);font-size:.79rem;line-height:1.7;tab-size:2;
+}
+.code pre code{background:none;border:none;padding:0;font-size:inherit;color:inherit}
+.k{color:#8FB8DC}      /* clave yaml */
+.v{color:#D9B08C}      /* valor */
+.c{color:#6C7F94;font-style:italic}  /* comentario */
+.s{color:#9DC08B}      /* string */
+.hl{background:rgba(232,148,74,.16);display:block;margin:0 -1.1rem;padding:0 1.1rem;border-left:2px solid var(--accent)}
+.bad-line{background:rgba(200,60,50,.14);display:block;margin:0 -1.1rem;padding:0 1.1rem;border-left:2px solid var(--bad)}
+
+/* ---------- callouts ---------- */
+.note{
+  border-left:3px solid var(--rule-strong);background:var(--surface);
+  padding:1rem 1.2rem;margin:1.6rem 0;border-radius:0 4px 4px 0;
+}
+.note.warn{border-left-color:var(--bad);background:var(--bad-soft)}
+.note.tip{border-left-color:var(--good);background:var(--good-soft)}
+.note.key{border-left-color:var(--accent);background:var(--accent-soft)}
+.note-label{
+  font-family:var(--f-mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+  display:block;margin-bottom:.45rem;color:var(--ink-soft);
+}
+.note.warn .note-label{color:var(--bad)}
+.note.tip .note-label{color:var(--good)}
+.note.key .note-label{color:var(--accent)}
+.note p:last-child{margin-bottom:0}
+.note p{font-size:.95rem}
+
+/* ---------- figures ---------- */
+/* Las figuras rompen la columna de lectura a proposito: un viewBox de 900
+   encajado en 68ch se renderiza al ~60 % y el texto del diagrama queda ilegible. */
+figure{
+  width:min(1240px, calc(100vw - var(--rail) - 5rem));
+  max-width:none;
+  position:relative;left:50%;transform:translateX(-50%);
+  margin:2.75rem 0 2.5rem;
+}
+figure svg{display:block;width:100%;height:auto;color:var(--ink)}
+figcaption{
+  font-family:var(--f-mono);font-size:.76rem;line-height:1.6;color:var(--ink-faint);
+  margin-top:.9rem;padding-top:.6rem;border-top:1px solid var(--rule);
+}
+.fig-frame{
+  background:var(--surface);border:1px solid var(--rule);border-radius:5px;
+  padding:1.5rem 1.35rem;overflow-x:auto;
+}
+
+/* ---------- tables ---------- */
+.tbl{overflow-x:auto;margin:1.6rem 0 1.9rem;border:1px solid var(--rule);border-radius:5px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th,td{text-align:left;padding:.6rem .85rem;border-bottom:1px solid var(--rule);vertical-align:top}
+th{
+  font-family:var(--f-display);font-weight:600;font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-soft);background:var(--surface-sunk);white-space:nowrap;
+}
+tr:last-child td{border-bottom:none}
+td code{font-size:.83em;white-space:nowrap}
+td.d{font-family:var(--f-body)}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- glossary chips ---------- */
+.chips{display:flex;flex-wrap:wrap;gap:.45rem;margin:1.3rem 0 1.8rem}
+.chip{
+  font-family:var(--f-mono);font-size:.72rem;padding:.32rem .6rem;
+  background:var(--steel-soft);color:var(--steel);border-radius:3px;border:1px solid transparent;
+}
+
+/* ---------- anatomy grid ---------- */
+.anat{display:grid;gap:.5rem;margin:1.5rem 0 2rem}
+.anat-row{
+  display:grid;grid-template-columns:8.5rem 1fr;gap:1rem;align-items:start;
+  padding:.75rem .9rem;background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+}
+.anat-row .lab{font-family:var(--f-mono);font-size:.73rem;color:var(--accent);padding-top:.15rem;font-weight:500}
+.anat-row .txt{font-size:.92rem}
+.anat-row .txt code{font-size:.85em}
+
+/* En pantallas estrechas el diagrama se desplaza dentro de su marco
+   en lugar de encogerse hasta ser ilegible. */
+@media (max-width:820px){
+  .fig-frame svg{min-width:660px}
+}
+@media (max-width:1000px){
+  :root{--rail:0}
+  .layout{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:none;border-bottom:1px solid var(--rule);padding:1.5rem}
+  .rail nav{display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:.15rem}
+  main{padding:0 1.5rem 5rem}
+  .hero{padding:3rem 0 2rem}
+  .anat-row{grid-template-columns:1fr;gap:.3rem}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="layout">
+<aside class="rail">
+  <div class="rail-brand">
+    <b>Loki de Cero a Query</b>
+    <span>Guía de campo</span>
+  </div>
+  <nav>
+    <a href="#c0"><span class="n">00</span><span>Las tres piezas</span></a>
+    <a href="#c1"><span class="n">01</span><span>Levantar el stack</span></a>
+    <a href="#c2"><span class="n">02</span><span>loki-config.yml</span></a>
+    <a href="#c3"><span class="n">03</span><span>promtail-config.yml</span></a>
+    <a href="#c4"><span class="n">04</span><span>Labels, streams, cardinalidad</span></a>
+    <a href="#c5"><span class="n">05</span><span>LogQL desde cero</span></a>
+    <a href="#c6"><span class="n">06</span><span>El error que vas a ver</span></a>
+    <a href="#c7"><span class="n">07</span><span>Medir latencia</span></a>
+    <a href="#c8"><span class="n">08</span><span>Chuleta</span></a>
+  </nav>
+</aside>
+
+<main>
+
+<header class="hero">
+  <p class="eyebrow">Grafana · Loki · Promtail · Docker Compose</p>
+  <h1>Loki de Cero a Query</h1>
+  <p class="standfirst">Cómo montar un stack de logs desde un directorio vacío, qué significa cada línea de configuración, y cómo preguntarle cosas a tus logs una vez están dentro.</p>
+  <div class="hero-meta">
+    <span>Loki 2.9.0</span><span>Promtail 2.9.0</span><span>Grafana 10.0.0</span><span>Sin conocimientos previos</span>
+  </div>
+</header>
+
+<!-- ================= CAP 0 ================= -->
+<section class="chapter" id="c0">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 00</div>
+  <h2>Las tres piezas, y qué hace cada una</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">Antes de escribir una sola línea de configuración: este stack son tres programas separados que se pasan datos por HTTP. Confundir cuál hace qué es la causa de la mitad de los problemas que vas a tener.</p>
+
+<div class="anat">
+  <div class="anat-row">
+    <div class="lab">Promtail</div>
+    <div class="txt">El <strong>agente</strong>. Vive donde están los ficheros de log. Los lee línea a línea, les saca metadatos, y los envía a Loki por HTTP. No almacena nada. Es el equivalente a Filebeat o Fluent Bit.</div>
+  </div>
+  <div class="anat-row">
+    <div class="lab">Loki</div>
+    <div class="txt">La <strong>base de datos</strong>. Recibe las líneas, las comprime en bloques y las guarda. Responde consultas en un lenguaje propio, LogQL. No tiene interfaz gráfica: solo una API HTTP.</div>
+  </div>
+  <div class="anat-row">
+    <div class="lab">Grafana</div>
+    <div class="txt">La <strong>cara visible</strong>. No guarda tus logs. Le hace preguntas a Loki y dibuja las respuestas. Si Grafana no ve datos, el problema casi nunca está en Grafana.</div>
+  </div>
+</div>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 250" role="img" aria-label="Los logs se escriben en un fichero, Promtail lo lee y los envía a Loki por HTTP POST, Loki los guarda en disco, y Grafana los consulta por HTTP GET.">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+    <marker id="ar-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+    </marker>
+    <marker id="ar-s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--steel)"/>
+    </marker>
+  </defs>
+
+  <!-- fichero -->
+  <rect x="14" y="78" width="132" height="66" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="80" y="104" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13.5" font-weight="500" fill="currentColor">access.log</text>
+  <text x="80" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".6">fichero en disco</text>
+
+  <!-- promtail -->
+  <rect x="228" y="78" width="132" height="66" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="294" y="104" text-anchor="middle" font-family="Archivo, sans-serif" font-size="14" font-weight="600" fill="currentColor">Promtail</text>
+  <text x="294" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".6">agente</text>
+
+  <!-- loki -->
+  <rect x="442" y="60" width="146" height="102" rx="3" fill="none" stroke="var(--accent)" stroke-width="2"/>
+  <text x="515" y="98" text-anchor="middle" font-family="Archivo, sans-serif" font-size="15" font-weight="700" fill="var(--accent)">Loki</text>
+  <text x="515" y="116" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".7">:3100</text>
+  <text x="515" y="134" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".7">almacena + consulta</text>
+
+  <!-- grafana -->
+  <rect x="670" y="78" width="132" height="66" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="736" y="104" text-anchor="middle" font-family="Archivo, sans-serif" font-size="14" font-weight="600" fill="currentColor">Grafana</text>
+  <text x="736" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".6">:3000</text>
+
+  <!-- disco -->
+  <rect x="442" y="192" width="146" height="40" rx="3" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="515" y="216" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".65">/tmp/loki/chunks</text>
+
+  <!-- flechas -->
+  <line x1="150" y1="111" x2="222" y2="111" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="186" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".75">tail</text>
+
+  <line x1="364" y1="111" x2="436" y2="111" stroke="var(--accent)" stroke-width="2" marker-end="url(#ar-a)"/>
+  <text x="400" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--accent)">POST</text>
+  <text x="400" y="130" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">/api/v1/push</text>
+
+  <line x1="664" y1="111" x2="594" y2="111" stroke="var(--steel)" stroke-width="2" marker-end="url(#ar-s)"/>
+  <text x="629" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--steel)">GET</text>
+  <text x="629" y="130" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">/query_range</text>
+
+  <line x1="515" y1="166" x2="515" y2="188" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ar)"/>
+
+  <!-- red docker -->
+  <rect x="204" y="34" width="622" height="212" rx="5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="2 4" opacity=".38"/>
+  <text x="214" y="26" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".55">red de docker compose — los servicios se resuelven por nombre</text>
+</svg>
+</div>
+<figcaption>Los datos van en una sola dirección hasta Loki; Grafana consulta en sentido contrario. Dentro de la red de Compose cada servicio se llama por su nombre: por eso Promtail apunta a <code>http://loki:3100</code> y nunca a <code>localhost</code>.</figcaption>
+</figure>
+
+<div class="note key">
+<span class="note-label">La idea que hay que entender</span>
+<p><strong>Loki no indexa el texto de tus logs.</strong> Elasticsearch construye un índice invertido de cada palabra, y por eso es caro. Loki solo indexa un puñado de <em>etiquetas</em> (labels) y guarda el resto del texto comprimido en bloques opacos. Buscar dentro del texto es una lectura secuencial forzada.</p>
+<p>Todo lo demás de esta guía —por qué las etiquetas importan tanto, por qué hay límites de cardinalidad, por qué una query mal escrita tarda diez minutos— sale de esa única decisión de diseño.</p>
+</div>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 210" role="img" aria-label="Elasticsearch indexa cada palabra del log; Loki solo indexa las etiquetas y deja el texto comprimido sin indexar.">
+  <text x="20" y="24" font-family="Archivo, sans-serif" font-size="14" font-weight="600" fill="currentColor" opacity=".8">Motor de búsqueda clásico</text>
+  <rect x="20" y="36" width="400" height="52" rx="3" fill="none" stroke="currentColor" stroke-width="1" opacity=".55"/>
+  <text x="34" y="58" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".75">192.168.1.7  GET  /checkout  500  4508</text>
+  <line x1="34" y1="64" x2="366" y2="64" stroke="var(--steel)" stroke-width="1.5"/>
+  <text x="34" y="80" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--steel)">todas las palabras van al índice</text>
+  <text x="430" y="66" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".7">índice enorme · consultas rápidas</text>
+
+  <text x="20" y="128" font-family="Archivo, sans-serif" font-size="14" font-weight="600" fill="var(--accent)">Loki</text>
+  <rect x="20" y="140" width="400" height="52" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+  <rect x="30" y="150" width="146" height="18" rx="2" fill="var(--accent)" opacity=".2"/>
+  <text x="36" y="163" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)">job=nginx status=500</text>
+  <text x="188" y="163" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".55">192.168.1.7 GET /checkout …</text>
+  <text x="30" y="184" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--accent)">solo esto se indexa</text>
+  <text x="188" y="184" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".55">esto queda comprimido, sin índice</text>
+  <text x="430" y="170" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".7">índice diminuto · barato de operar</text>
+</svg>
+</div>
+<figcaption>La diferencia no es de rendimiento, es de modelo. En Loki eliges por etiqueta y <em>luego</em> filtras por texto; nunca al revés.</figcaption>
+</figure>
+</div>
+</section>
+
+<!-- ================= CAP 1 ================= -->
+<section class="chapter" id="c1">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 01</div>
+  <h2>Levantar el stack desde un directorio vacío</h2>
+</div>
+
+<div class="wrap">
+<p>Lo único que necesitas instalado es Docker con el plugin Compose. Comprueba que lo tienes:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>comprobación previa</span></div>
+<pre><code>docker --version
+docker compose version</code></pre>
+</div>
+
+<p>Todo el proyecto son cinco ficheros. Esta es la estructura final, para que sepas hacia dónde vas:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">árbol</span><span>estructura del proyecto</span></div>
+<pre><code>grafana-loki-demo/
+├── docker-compose.yml           <span class="c"># orquesta los 3 servicios</span>
+├── loki-config.yml              <span class="c"># cómo almacena y valida Loki</span>
+├── promtail-config.yml          <span class="c"># qué ficheros leer y cómo parsearlos</span>
+├── logs/
+│   └── access.log               <span class="c"># los logs que quieres ingerir</span>
+└── grafana/
+    ├── provisioning/
+    │   ├── datasources/loki.yml <span class="c"># conecta Grafana con Loki</span>
+    │   └── dashboards/*.yml     <span class="c"># de dónde cargar los paneles</span>
+    └── dashboards/*.json        <span class="c"># los paneles en sí</span></code></pre>
+</div>
+
+<h3>docker-compose.yml, línea por línea</h3>
+
+<div class="code">
+<div class="code-bar"><span class="tag">docker-compose.yml</span><span>servicio loki</span></div>
+<pre><code><span class="k">services:</span>
+  <span class="k">loki:</span>
+    <span class="k">image:</span> <span class="v">grafana/loki:2.9.0</span>
+    <span class="k">ports:</span>
+      - <span class="s">"3100:3100"</span>
+    <span class="k">volumes:</span>
+      - <span class="s">./loki-config.yml:/etc/loki/local-config.yaml</span>
+      - <span class="s">loki-data:/tmp/loki</span>
+    <span class="k">command:</span> <span class="v">-config.file=/etc/loki/local-config.yaml</span>
+    <span class="k">healthcheck:</span>
+      <span class="k">test:</span> [<span class="s">"CMD-SHELL"</span>, <span class="s">"wget -q -O- http://localhost:3100/ready | grep -q ready || exit 1"</span>]
+      <span class="k">interval:</span> <span class="v">10s</span>
+      <span class="k">retries:</span> <span class="v">30</span>
+      <span class="k">start_period:</span> <span class="v">30s</span></code></pre>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">image</div><div class="txt">Fija la versión. <code>:latest</code> te romperá el proyecto un martes cualquiera cuando cambie el formato de configuración entre versiones mayores.</div></div>
+  <div class="anat-row"><div class="lab">ports</div><div class="txt"><code>"3100:3100"</code> expone el puerto del contenedor en tu máquina. Solo lo necesitas para hacer <code>curl</code> desde el host: Grafana habla con Loki por la red interna, no por aquí.</div></div>
+  <div class="anat-row"><div class="lab">volumes</div><div class="txt">El primero es un <em>bind mount</em>: mete tu fichero de configuración dentro del contenedor. El segundo es un <em>volumen con nombre</em>: hace que los datos sobrevivan a un <code>docker compose down</code>.</div></div>
+  <div class="anat-row"><div class="lab">command</div><div class="txt">Sobrescribe el arranque por defecto de la imagen para apuntar a tu configuración. Si la ruta no coincide con la del volumen, Loki arranca con valores por defecto y no te avisa de forma obvia.</div></div>
+  <div class="anat-row"><div class="lab">healthcheck</div><div class="txt">Sondea <code>/ready</code>. Sin esto no puedes usar <code>condition: service_healthy</code>, y Promtail arrancará antes que Loki para estrellarse contra un puerto cerrado.</div></div>
+</div>
+
+<div class="code">
+<div class="code-bar"><span class="tag">docker-compose.yml</span><span>promtail y grafana</span></div>
+<pre><code>  <span class="k">promtail:</span>
+    <span class="k">image:</span> <span class="v">grafana/promtail:2.9.0</span>
+    <span class="k">volumes:</span>
+      - <span class="s">./logs:/var/log/app-logs</span>          <span class="c"># los logs a leer</span>
+      - <span class="s">./promtail-config.yml:/etc/promtail/config.yml</span>
+      - <span class="s">./promtail-data:/tmp</span>             <span class="c"># aquí vive positions.yaml</span>
+    <span class="k">command:</span> <span class="v">-config.file=/etc/promtail/config.yml</span>
+<span class="hl">    <span class="k">depends_on:</span>
+      <span class="k">loki:</span>
+        <span class="k">condition:</span> <span class="v">service_healthy</span>    <span class="c"># espera de verdad, no solo "arrancado"</span></span>
+
+  <span class="k">grafana:</span>
+    <span class="k">image:</span> <span class="v">grafana/grafana:10.0.0</span>
+    <span class="k">ports:</span>
+      - <span class="s">"3000:3000"</span>
+    <span class="k">environment:</span>
+      - <span class="v">GF_SECURITY_ADMIN_PASSWORD=admin</span>
+    <span class="k">volumes:</span>
+      - <span class="s">./grafana/provisioning:/etc/grafana/provisioning</span>
+      - <span class="s">./grafana/dashboards:/var/lib/grafana/dashboards</span>
+      - <span class="s">grafana-data:/var/lib/grafana</span>
+
+<span class="k">volumes:</span>
+  <span class="k">loki-data:</span>
+  <span class="k">grafana-data:</span></code></pre>
+</div>
+
+<div class="note warn">
+<span class="note-label">Trampa · permisos de volumen</span>
+<p>Loki corre dentro del contenedor como el usuario <code>10001</code>, pero Docker crea los volúmenes nuevos como <code>root</code>. La primera vez verás <code>mkdir /tmp/loki/rules: permission denied</code> y el contenedor morirá en bucle. Se arregla una sola vez:</p>
+<div class="code" style="margin:.9rem 0 0">
+<pre><code>docker run --rm -v tuproyecto_loki-data:/data alpine:3 \
+  sh -c 'mkdir -p /data/chunks /data/rules /data/wal && chown -R 10001:10001 /data'</code></pre>
+</div>
+</div>
+
+<h3>Conectar Grafana con Loki sin tocar la interfaz</h3>
+<p>Puedes añadir el origen de datos a mano desde el navegador, pero se pierde al recrear el contenedor. El <em>provisioning</em> lo declara en un fichero:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">grafana/provisioning/datasources/loki.yml</span><span></span></div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">1</span>
+<span class="k">datasources:</span>
+  - <span class="k">name:</span> <span class="v">Loki</span>
+    <span class="k">type:</span> <span class="v">loki</span>
+    <span class="k">access:</span> <span class="v">proxy</span>
+<span class="hl">    <span class="k">uid:</span> <span class="v">loki</span>                      <span class="c"># fíjalo tú; si no, Grafana genera uno aleatorio</span></span>
+<span class="hl">    <span class="k">url:</span> <span class="v">http://loki:3100</span>          <span class="c"># nombre del servicio, NUNCA localhost</span></span>
+    <span class="k">isDefault:</span> <span class="v">true</span>
+    <span class="k">jsonData:</span>
+      <span class="k">maxLines:</span> <span class="v">5000</span>
+      <span class="k">timeout:</span> <span class="v">300</span></code></pre>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">access: proxy</div><div class="txt">El navegador pide a Grafana y Grafana pide a Loki. Con <code>direct</code> sería tu navegador quien llamara a Loki, y desde ahí el nombre <code>loki</code> no existe.</div></div>
+  <div class="anat-row"><div class="lab">uid</div><div class="txt">El identificador que usan los paneles para referirse a este origen. Si dejas que Grafana lo invente, tus dashboards apuntarán a un <code>uid</code> muerto en cuanto recrees el volumen.</div></div>
+  <div class="anat-row"><div class="lab">url</div><div class="txt">El error número uno de todo el proyecto. <code>localhost</code> dentro del contenedor de Grafana es el propio Grafana, no Loki.</div></div>
+</div>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>arrancar</span></div>
+<pre><code>docker compose up -d
+docker compose ps                    <span class="c"># los tres deben estar Up</span>
+curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</span></code></pre>
+</div>
+</div>
+</section>
+
+<!-- ================= CAP 2 ================= -->
+<section class="chapter" id="c2">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 02</div>
+  <h2>loki-config.yml, término por término</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">Loki es un sistema distribuido metido dentro de un solo binario. Los nombres de la configuración vienen de sus componentes internos, así que primero conviene ver por dónde pasa una línea de log.</p>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 300" role="img" aria-label="Una línea entra por el distributor, que valida su antigüedad; pasa al ingester, que la añade a un chunk en memoria y vuelve a validar su antigüedad; el chunk se vuelca a disco. El querier lee de memoria y de disco.">
+  <defs>
+    <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+    <marker id="ar2s" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--steel)"/>
+    </marker>
+    <marker id="ar2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+
+  <text x="14" y="20" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".55">dentro del contenedor de Loki</text>
+
+  <!-- entrada -->
+  <text x="14" y="86" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--accent)">POST</text>
+  <text x="14" y="100" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">push</text>
+  <line x1="56" y1="82" x2="96" y2="82" stroke="var(--accent)" stroke-width="2" marker-end="url(#ar2a)"/>
+
+  <!-- distributor -->
+  <rect x="100" y="52" width="150" height="60" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="175" y="76" text-anchor="middle" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="currentColor">distributor</text>
+  <text x="175" y="94" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">recibe y valida</text>
+
+  <!-- check 1 -->
+  <rect x="100" y="126" width="150" height="46" rx="3" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1.2"/>
+  <text x="175" y="144" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700" fill="var(--bad)">control nº 1</text>
+  <text x="175" y="160" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--bad)">reject_old_samples</text>
+  <line x1="175" y1="116" x2="175" y2="122" stroke="var(--bad)" stroke-width="1.2" marker-end="url(#ar2)"/>
+
+  <!-- ingester -->
+  <rect x="310" y="52" width="150" height="60" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="385" y="76" text-anchor="middle" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="currentColor">ingester</text>
+  <text x="385" y="94" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">acumula en memoria</text>
+  <line x1="254" y1="82" x2="304" y2="82" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+  <!-- check 2 -->
+  <rect x="310" y="126" width="150" height="46" rx="3" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="2"/>
+  <text x="385" y="144" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700" fill="var(--bad)">control nº 2</text>
+  <text x="385" y="160" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--bad)">max_chunk_age / 2</text>
+  <line x1="385" y1="116" x2="385" y2="122" stroke="var(--bad)" stroke-width="1.2" marker-end="url(#ar2)"/>
+
+  <!-- chunk -->
+  <rect x="520" y="52" width="150" height="60" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="595" y="76" text-anchor="middle" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="currentColor">chunk</text>
+  <text x="595" y="94" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">bloque comprimido</text>
+  <line x1="464" y1="82" x2="514" y2="82" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar2)"/>
+
+  <!-- storage -->
+  <rect x="730" y="52" width="150" height="60" rx="3" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3"/>
+  <text x="805" y="76" text-anchor="middle" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="currentColor">storage</text>
+  <text x="805" y="94" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">filesystem</text>
+  <line x1="674" y1="82" x2="724" y2="82" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar2)"/>
+  <text x="699" y="70" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity=".6">flush</text>
+
+  <!-- querier -->
+  <rect x="520" y="222" width="150" height="56" rx="3" fill="none" stroke="var(--steel)" stroke-width="1.5"/>
+  <text x="595" y="245" text-anchor="middle" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--steel)">querier</text>
+  <text x="595" y="262" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">responde LogQL</text>
+
+  <path d="M 595 216 L 595 200 L 385 200 L 385 176" fill="none" stroke="var(--steel)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar2s)"/>
+  <path d="M 670 250 L 805 250 L 805 118" fill="none" stroke="var(--steel)" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar2s)"/>
+  <text x="470" y="196" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--steel)">lee lo reciente</text>
+  <text x="742" y="244" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--steel)">lee lo antiguo</text>
+
+  <text x="595" y="292" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--steel)">← Grafana pregunta aquí</text>
+</svg>
+</div>
+<figcaption>Hay <strong>dos</strong> controles de antigüedad, no uno, y viven en componentes distintos. Desactivar el primero no desactiva el segundo: ese malentendido es el capítulo 06 de esta guía.</figcaption>
+</figure>
+
+<h3>El esqueleto mínimo</h3>
+
+<div class="code">
+<div class="code-bar"><span class="tag">loki-config.yml</span><span>bloques base</span></div>
+<pre><code><span class="k">auth_enabled:</span> <span class="v">false</span>
+
+<span class="k">server:</span>
+  <span class="k">http_listen_port:</span> <span class="v">3100</span>
+  <span class="k">grpc_listen_port:</span> <span class="v">9096</span>
+
+<span class="k">common:</span>
+  <span class="k">path_prefix:</span> <span class="v">/tmp/loki</span>
+  <span class="k">storage:</span>
+    <span class="k">filesystem:</span>
+      <span class="k">chunks_directory:</span> <span class="v">/tmp/loki/chunks</span>
+      <span class="k">rules_directory:</span> <span class="v">/tmp/loki/rules</span>
+  <span class="k">replication_factor:</span> <span class="v">1</span>
+  <span class="k">ring:</span>
+    <span class="k">kvstore:</span>
+      <span class="k">store:</span> <span class="v">inmemory</span>
+
+<span class="k">schema_config:</span>
+  <span class="k">configs:</span>
+    - <span class="k">from:</span> <span class="v">2020-01-01</span>
+      <span class="k">store:</span> <span class="v">tsdb</span>
+      <span class="k">object_store:</span> <span class="v">filesystem</span>
+      <span class="k">schema:</span> <span class="v">v13</span>
+      <span class="k">index:</span>
+        <span class="k">prefix:</span> <span class="v">index_</span>
+        <span class="k">period:</span> <span class="v">24h</span></code></pre>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">auth_enabled</div><div class="txt">Con <code>false</code>, Loki mete todo en un inquilino ficticio llamado <code>fake</code>. Con <code>true</code>, cada petición debe traer la cabecera <code>X-Scope-OrgID</code> o falla. Para una demo local siempre <code>false</code>.</div></div>
+  <div class="anat-row"><div class="lab">replication_factor</div><div class="txt">Cuántas copias de cada línea se guardan en el anillo. En un solo nodo tiene que ser <code>1</code>; cualquier otro valor deja a Loki esperando réplicas que no existen.</div></div>
+  <div class="anat-row"><div class="lab">ring / kvstore</div><div class="txt">El <em>anillo</em> es cómo se reparten el trabajo varios Lokis. Con <code>inmemory</code> le dices «soy el único, no busques compañeros». En producción real esto sería Consul o etcd.</div></div>
+  <div class="anat-row"><div class="lab">schema_config</div><div class="txt">El formato del índice. <code>tsdb</code> + <code>v13</code> es el moderno y el que debes usar. El campo <code>from</code> es una fecha de inicio de vigencia: para cambiar de esquema se añade una entrada nueva con fecha futura, nunca se edita la existente.</div></div>
+  <div class="anat-row"><div class="lab">period: 24h</div><div class="txt">El índice se parte en tablas de un día. No lo toques.</div></div>
+</div>
+
+<h3>limits_config — los frenos que te van a morder</h3>
+<p>Este bloque es donde vive casi todo lo que hace que Loki rechace tus datos. Los valores por defecto están pensados para logs que llegan <em>en tiempo real</em>, no para cargar un histórico.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">loki-config.yml</span><span>limits_config</span></div>
+<pre><code><span class="k">limits_config:</span>
+<span class="hl">  <span class="k">reject_old_samples:</span> <span class="v">false</span>
+  <span class="k">reject_old_samples_max_age:</span> <span class="v">8760h</span>
+  <span class="k">creation_grace_period:</span> <span class="v">8760h</span></span>
+  <span class="k">unordered_writes:</span> <span class="v">true</span>
+
+  <span class="k">ingestion_rate_mb:</span> <span class="v">512</span>
+  <span class="k">ingestion_burst_size_mb:</span> <span class="v">1024</span>
+<span class="hl">  <span class="k">per_stream_rate_limit:</span> <span class="v">512MB</span>
+  <span class="k">per_stream_rate_limit_burst:</span> <span class="v">1024MB</span></span>
+
+  <span class="k">max_query_length:</span> <span class="v">0</span>
+  <span class="k">max_query_lookback:</span> <span class="v">0</span>
+  <span class="k">max_entries_limit_per_query:</span> <span class="v">10000</span>
+  <span class="k">split_queries_by_interval:</span> <span class="v">24h</span></code></pre>
+</div>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Parámetro</th><th>Por defecto</th><th>Qué pasa si lo dejas así</th></tr></thead>
+<tbody>
+<tr><td><code>reject_old_samples</code></td><td class="num">true</td><td class="d">Rechaza cualquier línea más vieja que <code>reject_old_samples_max_age</code>. Ponlo a <code>false</code> para cargar históricos.</td></tr>
+<tr><td><code>creation_grace_period</code></td><td class="num">10m</td><td class="d">Margen hacia el <em>futuro</em>. Si el reloj de tu contenedor va adelantado o tus logs tienen fechas futuras, se descartan en silencio.</td></tr>
+<tr><td><code>unordered_writes</code></td><td class="num">true</td><td class="d">Permite líneas desordenadas dentro de una ventana. Es lo que habilita el control nº 2 del diagrama.</td></tr>
+<tr><td><code>per_stream_rate_limit</code></td><td class="num">3MB</td><td class="d"><strong>El límite que casi nadie ve venir.</strong> Es por <em>stream</em>, no global. Si todos tus logs caen en un stream, 3 MB/s es tu techo real por mucho que subas <code>ingestion_rate_mb</code>.</td></tr>
+<tr><td><code>max_query_length</code></td><td class="num">721h</td><td class="d">Una consulta de más de 30 días falla. <code>0</code> lo desactiva.</td></tr>
+<tr><td><code>max_entries_limit_per_query</code></td><td class="num">5000</td><td class="d">Techo de líneas devueltas por consulta de logs. No afecta a las métricas.</td></tr>
+<tr><td><code>split_queries_by_interval</code></td><td class="num">30m</td><td class="d">Trocea una consulta larga en subconsultas paralelas. Con históricos largos, <code>24h</code> va mejor.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>ingester — memoria y ventana temporal</h3>
+
+<div class="code">
+<div class="code-bar"><span class="tag">loki-config.yml</span><span>ingester</span></div>
+<pre><code><span class="k">ingester:</span>
+<span class="hl">  <span class="k">max_chunk_age:</span> <span class="v">1560h</span>       <span class="c"># tolerancia hacia atrás = la mitad de esto</span></span>
+  <span class="k">chunk_idle_period:</span> <span class="v">5m</span>     <span class="c"># vuelca el chunk si el stream se calla</span>
+  <span class="k">chunk_target_size:</span> <span class="v">1572864</span> <span class="c"># ~1,5 MB: corta el chunk al llegar aquí</span>
+  <span class="k">chunk_encoding:</span> <span class="v">snappy</span>   <span class="c"># compresión rápida</span></code></pre>
+</div>
+
+<div class="note tip">
+<span class="note-label">Por qué van juntos</span>
+<p>Subir <code>max_chunk_age</code> a 1560 horas suena a que los datos se quedarán en RAM dos meses. No ocurre, porque <code>chunk_idle_period</code> y <code>chunk_target_size</code> también cierran chunks: el primero cuando el stream deja de recibir, el segundo cuando el bloque alcanza su tamaño. <code>max_chunk_age</code> es solo el último recurso de los tres. Por eso puedes subirlo sin que la memoria se dispare.</p>
+</div>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>validar sin arrancar</span></div>
+<pre><code>docker run --rm -v "$PWD/loki-config.yml:/etc/loki/local-config.yaml" \
+  grafana/loki:2.9.0 -config.file=/etc/loki/local-config.yaml -verify-config</code></pre>
+</div>
+<p>Responde <code>msg="config is valid"</code> o te dice exactamente qué línea está mal. Úsalo antes de cada <code>up</code>.</p>
+</div>
+</section>
+
+<!-- ================= CAP 3 ================= -->
+<section class="chapter" id="c3">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 03</div>
+  <h2>promtail-config.yml y el pipeline de parseo</h2>
+</div>
+
+<div class="wrap">
+<p>Promtail tiene tres responsabilidades: saber <em>qué</em> ficheros leer, recordar <em>por dónde iba</em>, y decidir <em>qué etiquetas</em> lleva cada línea.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">promtail-config.yml</span><span>estructura completa</span></div>
+<pre><code><span class="k">server:</span>
+  <span class="k">http_listen_port:</span> <span class="v">9080</span>
+  <span class="k">grpc_listen_port:</span> <span class="v">0</span>          <span class="c"># 0 = desactivado, no lo necesitas</span>
+
+<span class="k">positions:</span>
+  <span class="k">filename:</span> <span class="v">/tmp/positions.yaml</span>  <span class="c"># memoria de por dónde iba cada fichero</span>
+
+<span class="k">clients:</span>
+  - <span class="k">url:</span> <span class="v">http://loki:3100/loki/api/v1/push</span>
+    <span class="k">batchwait:</span> <span class="v">1s</span>              <span class="c"># espera antes de enviar un lote incompleto</span>
+    <span class="k">batchsize:</span> <span class="v">1048576</span>         <span class="c"># 1 MB por lote</span>
+    <span class="k">backoff_config:</span>
+      <span class="k">min_period:</span> <span class="v">500ms</span>
+      <span class="k">max_period:</span> <span class="v">5s</span>
+      <span class="k">max_retries:</span> <span class="v">10</span>
+
+<span class="k">scrape_configs:</span>
+  - <span class="k">job_name:</span> <span class="v">nginx-demo-logs</span>
+    <span class="k">static_configs:</span>
+      - <span class="k">targets:</span> [<span class="v">localhost</span>]
+        <span class="k">labels:</span>
+<span class="hl">          <span class="k">job:</span> <span class="v">nginx_access</span>          <span class="c"># etiqueta fija para todo el fichero</span>
+          <span class="k">__path__:</span> <span class="v">/var/log/app-logs/access.log</span></span>
+
+    <span class="k">pipeline_stages:</span>
+      - <span class="k">regex:</span>
+          <span class="k">expression:</span> <span class="s">'^(?P&lt;ip&gt;[^ ]+) - - \[(?P&lt;timestamp&gt;[^\]]+)\] "(?P&lt;method&gt;[A-Z]+) (?P&lt;endpoint&gt;[^ ]+) [^"]*" (?P&lt;status&gt;\d{3}) (?P&lt;bytes&gt;\d+)'</span>
+      - <span class="k">timestamp:</span>
+          <span class="k">source:</span> <span class="v">timestamp</span>
+          <span class="k">format:</span> <span class="s">"02/Jan/2006:15:04:05 -0700"</span>
+      - <span class="k">labels:</span>
+          <span class="k">status:</span></code></pre>
+</div>
+
+<h3>Las cuatro claves que importan</h3>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">positions</div><div class="txt">Un YAML con el offset en bytes de cada fichero. Si Loki rechaza un lote, Promtail reintenta, se rinde y <strong>avanza igualmente</strong>: esas líneas se pierden. Para reprocesar un fichero desde cero hay que borrar este fichero y reiniciar.</div></div>
+  <div class="anat-row"><div class="lab">__path__</div><div class="txt">Los guiones bajos dobles marcan una etiqueta interna: se usa y se descarta, no llega a Loki. Acepta comodines, pero <strong>evítalos si tienes ficheros con formatos distintos</strong>: un <code>*.log</code> se traga todo y le aplica el parseo equivocado.</div></div>
+  <div class="anat-row"><div class="lab">stage regex</div><div class="txt">Extrae campos con nombre. Sintaxis Go: <code>(?P&lt;nombre&gt;…)</code>. Lo extraído vive solo durante el pipeline; no se convierte en etiqueta por sí solo.</div></div>
+  <div class="anat-row"><div class="lab">stage timestamp</div><div class="txt">Le dice a Loki que use la fecha <em>de dentro</em> del log, no la hora de lectura. Sin esta etapa, un log de julio se guarda con la marca de hoy.</div></div>
+  <div class="anat-row"><div class="lab">stage labels</div><div class="txt">Promociona un campo extraído a etiqueta indexada. <strong>Aquí es donde se hace daño.</strong> Ver capítulo siguiente.</div></div>
+</div>
+
+<div class="note warn">
+<span class="note-label">El formato de fecha de Go</span>
+<p>Go no usa <code>%Y-%m-%d</code>. Usa una fecha de referencia concreta —<strong>lunes 2 de enero de 2006 a las 15:04:05 con huso −0700</strong>— y tú escribes esa misma fecha con la forma que tenga tu log. Por eso <code>27/Jul/2026:07:00:26 +0000</code> se declara como <code>02/Jan/2006:15:04:05 -0700</code>. Los números no son arbitrarios: son 1, 2, 3, 4, 5, 6, 7 en orden.</p>
+</div>
+</div>
+</section>
+
+<!-- ================= CAP 4 ================= -->
+<section class="chapter" id="c4">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 04</div>
+  <h2>Labels, streams y por qué la cardinalidad te arruina el día</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">Este es el concepto central de Loki. Si solo te llevas una cosa de la guía, que sea esta.</p>
+
+<p>Un <strong>stream</strong> es el conjunto de líneas que comparten exactamente la misma combinación de etiquetas. Loki no guarda «logs»: guarda streams, y cada stream tiene sus propios bloques, su propio índice y su propio límite de velocidad.</p>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 330" role="img" aria-label="Con dos etiquetas de pocos valores se forman veinte streams manejables; al añadir una etiqueta de valor único como el tiempo de respuesta, cada línea crea su propio stream.">
+  <!-- izquierda: sano -->
+  <text x="20" y="22" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--good)">Sano</text>
+  <text x="20" y="40" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".65">job · status · endpoint</text>
+
+  <rect x="20" y="52" width="360" height="30" rx="3" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1"/>
+  <text x="32" y="71" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--good)">status: 200 · 301 · 404 · 500</text>
+  <text x="290" y="71" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".7">4 valores</text>
+
+  <rect x="20" y="90" width="360" height="30" rx="3" fill="var(--good-soft)" stroke="var(--good)" stroke-width="1"/>
+  <text x="32" y="109" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--good)">endpoint: /login · /checkout · …</text>
+  <text x="290" y="109" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".7">5 valores</text>
+
+  <text x="20" y="150" font-family="JetBrains Mono, monospace" font-size="12.5" fill="currentColor">4 × 5 =</text>
+  <text x="88" y="150" font-family="Archivo, sans-serif" font-size="15" font-weight="700" fill="var(--good)">20 streams</text>
+
+  <g stroke="var(--good)" stroke-width="1" fill="var(--good)" opacity=".55">
+    <rect x="20" y="166" width="14" height="14" rx="2"/><rect x="40" y="166" width="14" height="14" rx="2"/>
+    <rect x="60" y="166" width="14" height="14" rx="2"/><rect x="80" y="166" width="14" height="14" rx="2"/>
+    <rect x="100" y="166" width="14" height="14" rx="2"/><rect x="120" y="166" width="14" height="14" rx="2"/>
+    <rect x="140" y="166" width="14" height="14" rx="2"/><rect x="160" y="166" width="14" height="14" rx="2"/>
+    <rect x="180" y="166" width="14" height="14" rx="2"/><rect x="200" y="166" width="14" height="14" rx="2"/>
+    <rect x="20" y="186" width="14" height="14" rx="2"/><rect x="40" y="186" width="14" height="14" rx="2"/>
+    <rect x="60" y="186" width="14" height="14" rx="2"/><rect x="80" y="186" width="14" height="14" rx="2"/>
+    <rect x="100" y="186" width="14" height="14" rx="2"/><rect x="120" y="186" width="14" height="14" rx="2"/>
+    <rect x="140" y="186" width="14" height="14" rx="2"/><rect x="160" y="186" width="14" height="14" rx="2"/>
+    <rect x="180" y="186" width="14" height="14" rx="2"/><rect x="200" y="186" width="14" height="14" rx="2"/>
+  </g>
+  <text x="20" y="228" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".7">índice pequeño · chunks bien llenos</text>
+  <text x="20" y="244" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".7">consultas rápidas</text>
+
+  <!-- separador -->
+  <line x1="440" y1="14" x2="440" y2="316" stroke="currentColor" stroke-width="1" opacity=".2"/>
+
+  <!-- derecha: explosión -->
+  <text x="470" y="22" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--bad)">Roto</text>
+  <text x="470" y="40" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".65">… + request_time como etiqueta</text>
+
+  <rect x="470" y="52" width="360" height="30" rx="3" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1"/>
+  <text x="482" y="71" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--bad)">request_time: 0.081 · 0.235 · 1.902 …</text>
+
+  <rect x="470" y="90" width="360" height="30" rx="3" fill="var(--bad-soft)" stroke="var(--bad)" stroke-width="1"/>
+  <text x="482" y="109" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--bad)">casi único en cada línea</text>
+  <text x="740" y="109" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--bad)">∞ valores</text>
+
+  <text x="470" y="150" font-family="JetBrains Mono, monospace" font-size="12.5" fill="currentColor">20 × miles =</text>
+  <text x="562" y="150" font-family="Archivo, sans-serif" font-size="15" font-weight="700" fill="var(--bad)">un stream por línea</text>
+
+  <g fill="var(--bad)" opacity=".5">
+    <rect x="470" y="166" width="4" height="14" rx="1"/><rect x="478" y="166" width="4" height="14" rx="1"/>
+    <rect x="486" y="166" width="4" height="14" rx="1"/><rect x="494" y="166" width="4" height="14" rx="1"/>
+    <rect x="502" y="166" width="4" height="14" rx="1"/><rect x="510" y="166" width="4" height="14" rx="1"/>
+    <rect x="518" y="166" width="4" height="14" rx="1"/><rect x="526" y="166" width="4" height="14" rx="1"/>
+    <rect x="534" y="166" width="4" height="14" rx="1"/><rect x="542" y="166" width="4" height="14" rx="1"/>
+    <rect x="550" y="166" width="4" height="14" rx="1"/><rect x="558" y="166" width="4" height="14" rx="1"/>
+    <rect x="566" y="166" width="4" height="14" rx="1"/><rect x="574" y="166" width="4" height="14" rx="1"/>
+    <rect x="582" y="166" width="4" height="14" rx="1"/><rect x="590" y="166" width="4" height="14" rx="1"/>
+    <rect x="598" y="166" width="4" height="14" rx="1"/><rect x="606" y="166" width="4" height="14" rx="1"/>
+    <rect x="614" y="166" width="4" height="14" rx="1"/><rect x="622" y="166" width="4" height="14" rx="1"/>
+    <rect x="630" y="166" width="4" height="14" rx="1"/><rect x="638" y="166" width="4" height="14" rx="1"/>
+    <rect x="646" y="166" width="4" height="14" rx="1"/><rect x="654" y="166" width="4" height="14" rx="1"/>
+    <rect x="662" y="166" width="4" height="14" rx="1"/><rect x="670" y="166" width="4" height="14" rx="1"/>
+    <rect x="678" y="166" width="4" height="14" rx="1"/><rect x="686" y="166" width="4" height="14" rx="1"/>
+    <rect x="694" y="166" width="4" height="14" rx="1"/><rect x="702" y="166" width="4" height="14" rx="1"/>
+    <rect x="710" y="166" width="4" height="14" rx="1"/><rect x="718" y="166" width="4" height="14" rx="1"/>
+    <rect x="726" y="166" width="4" height="14" rx="1"/><rect x="734" y="166" width="4" height="14" rx="1"/>
+    <rect x="742" y="166" width="4" height="14" rx="1"/><rect x="750" y="166" width="4" height="14" rx="1"/>
+    <rect x="758" y="166" width="4" height="14" rx="1"/><rect x="766" y="166" width="4" height="14" rx="1"/>
+    <rect x="774" y="166" width="4" height="14" rx="1"/><rect x="782" y="166" width="4" height="14" rx="1"/>
+    <rect x="470" y="186" width="4" height="14" rx="1"/><rect x="478" y="186" width="4" height="14" rx="1"/>
+    <rect x="486" y="186" width="4" height="14" rx="1"/><rect x="494" y="186" width="4" height="14" rx="1"/>
+    <rect x="502" y="186" width="4" height="14" rx="1"/><rect x="510" y="186" width="4" height="14" rx="1"/>
+    <rect x="518" y="186" width="4" height="14" rx="1"/><rect x="526" y="186" width="4" height="14" rx="1"/>
+    <rect x="534" y="186" width="4" height="14" rx="1"/><rect x="542" y="186" width="4" height="14" rx="1"/>
+    <rect x="550" y="186" width="4" height="14" rx="1"/><rect x="558" y="186" width="4" height="14" rx="1"/>
+    <rect x="566" y="186" width="4" height="14" rx="1"/><rect x="574" y="186" width="4" height="14" rx="1"/>
+    <rect x="582" y="186" width="4" height="14" rx="1"/><rect x="590" y="186" width="4" height="14" rx="1"/>
+    <rect x="598" y="186" width="4" height="14" rx="1"/><rect x="606" y="186" width="4" height="14" rx="1"/>
+    <rect x="614" y="186" width="4" height="14" rx="1"/><rect x="622" y="186" width="4" height="14" rx="1"/>
+    <rect x="630" y="186" width="4" height="14" rx="1"/><rect x="638" y="186" width="4" height="14" rx="1"/>
+    <rect x="646" y="186" width="4" height="14" rx="1"/><rect x="654" y="186" width="4" height="14" rx="1"/>
+    <rect x="662" y="186" width="4" height="14" rx="1"/><rect x="670" y="186" width="4" height="14" rx="1"/>
+    <rect x="678" y="186" width="4" height="14" rx="1"/><rect x="686" y="186" width="4" height="14" rx="1"/>
+    <rect x="694" y="186" width="4" height="14" rx="1"/><rect x="702" y="186" width="4" height="14" rx="1"/>
+    <rect x="710" y="186" width="4" height="14" rx="1"/><rect x="718" y="186" width="4" height="14" rx="1"/>
+    <rect x="726" y="186" width="4" height="14" rx="1"/><rect x="734" y="186" width="4" height="14" rx="1"/>
+    <rect x="742" y="186" width="4" height="14" rx="1"/><rect x="750" y="186" width="4" height="14" rx="1"/>
+    <rect x="758" y="186" width="4" height="14" rx="1"/><rect x="766" y="186" width="4" height="14" rx="1"/>
+    <rect x="774" y="186" width="4" height="14" rx="1"/><rect x="782" y="186" width="4" height="14" rx="1"/>
+  </g>
+  <text x="470" y="228" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--bad)">índice gigante · chunks de una línea</text>
+  <text x="470" y="244" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--bad)">memoria disparada · consultas lentas</text>
+
+  <line x1="20" y1="272" x2="880" y2="272" stroke="currentColor" stroke-width="1" opacity=".15"/>
+  <text x="20" y="296" font-family="Archivo, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Regla práctica</text>
+  <text x="20" y="316" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".8">¿el campo tiene menos de ~20 valores posibles y no crece? → etiqueta. Si no → extráelo al consultar.</text>
+</svg>
+</div>
+<figcaption>El número de streams es el <em>producto</em> de los valores posibles de todas las etiquetas. Basta una etiqueta con valores libres —una IP, una duración, un identificador— para multiplicar por infinito.</figcaption>
+</figure>
+
+<h3>Qué sí y qué no</h3>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Campo</th><th>¿Etiqueta?</th><th>Motivo</th></tr></thead>
+<tbody>
+<tr><td><code>job</code></td><td style="color:var(--good);font-weight:600">Sí</td><td class="d">Un puñado de valores, definidos por ti.</td></tr>
+<tr><td><code>status</code></td><td style="color:var(--good);font-weight:600">Sí</td><td class="d">Los códigos HTTP son un conjunto cerrado y pequeño.</td></tr>
+<tr><td><code>endpoint</code></td><td style="color:var(--good);font-weight:600">Sí, con cuidado</td><td class="d">Bien si son rutas fijas. <strong>No</strong> si llevan identificadores: <code>/users/8412</code> es cardinalidad infinita disfrazada.</td></tr>
+<tr><td><code>ip</code></td><td style="color:var(--bad);font-weight:600">No</td><td class="d">Miles de valores. Extráela al consultar.</td></tr>
+<tr><td><code>request_time</code></td><td style="color:var(--bad);font-weight:600">Nunca</td><td class="d">Un valor decimal distinto por línea.</td></tr>
+<tr><td><code>trace_id</code></td><td style="color:var(--bad);font-weight:600">Nunca</td><td class="d">Único por definición. Este es el caso de libro.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note key">
+<span class="note-label">La consecuencia práctica</span>
+<p>Los campos que <em>no</em> son etiquetas no se pierden: siguen en el texto de la línea. Simplemente los extraes en el momento de consultar, con <code>| pattern</code> o <code>| regexp</code>. Cuesta más CPU al leer, pero no envenena el índice.</p>
+</div>
+</div>
+</section>
+
+<!-- ================= CAP 5 ================= -->
+<section class="chapter" id="c5">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 05</div>
+  <h2>LogQL desde cero</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">LogQL se lee de izquierda a derecha como una cinta transportadora: eliges un conjunto de líneas, las vas filtrando y transformando, y opcionalmente las conviertes en números.</p>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 290" role="img" aria-label="Una consulta LogQL se descompone en cuatro partes: la agregación exterior, la función de rango, el selector de streams, y el pipeline de parseo y filtrado.">
+  <text x="14" y="20" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".55">anatomía de una consulta completa</text>
+
+  <!-- la query -->
+  <text x="14" y="60" font-family="JetBrains Mono, monospace" font-size="14.5" fill="currentColor">
+    <tspan fill="var(--bad)">avg_over_time</tspan><tspan>(</tspan><tspan fill="var(--accent)">{job="nginx_timed"}</tspan><tspan fill="var(--steel)"> | pattern `…&lt;request_time&gt;…` </tspan><tspan fill="var(--good)">| unwrap request_time</tspan><tspan> [5m])</tspan>
+  </text>
+  <text x="14" y="82" font-family="JetBrains Mono, monospace" font-size="14.5" fill="currentColor">
+    <tspan>  </tspan><tspan fill="var(--bad)">by (endpoint)</tspan>
+  </text>
+
+  <!-- llaves -->
+  <path d="M 120 70 L 120 78 L 252 78 L 252 70" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+  <line x1="186" y1="78" x2="186" y2="104" stroke="var(--accent)" stroke-width="1.3"/>
+  <rect x="96" y="104" width="182" height="52" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+  <text x="187" y="122" text-anchor="middle" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--accent)">1 · Selector de streams</text>
+  <text x="187" y="138" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".75">obligatorio · usa el índice</text>
+  <text x="187" y="150" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".75">cuanto más estrecho, más rápido</text>
+
+  <path d="M 256 70 L 256 88 L 560 88 L 560 70" fill="none" stroke="var(--steel)" stroke-width="1.3"/>
+  <line x1="408" y1="88" x2="408" y2="176" stroke="var(--steel)" stroke-width="1.3"/>
+  <rect x="316" y="176" width="184" height="52" rx="3" fill="none" stroke="var(--steel)" stroke-width="1.3"/>
+  <text x="408" y="194" text-anchor="middle" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--steel)">2 · Pipeline</text>
+  <text x="408" y="210" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".75">filtra y extrae campos</text>
+  <text x="408" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".75">lee el texto: es lo caro</text>
+
+  <path d="M 564 70 L 564 78 L 700 78 L 700 70" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+  <line x1="632" y1="78" x2="632" y2="104" stroke="var(--good)" stroke-width="1.3"/>
+  <rect x="540" y="104" width="184" height="52" rx="3" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+  <text x="632" y="122" text-anchor="middle" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--good)">3 · unwrap</text>
+  <text x="632" y="138" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".75">convierte un campo en número</text>
+  <text x="632" y="150" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".75">solo para métricas de valor</text>
+
+  <line x1="60" y1="66" x2="60" y2="240" stroke="var(--bad)" stroke-width="1.3"/>
+  <rect x="740" y="176" width="150" height="66" rx="3" fill="none" stroke="var(--bad)" stroke-width="1.3"/>
+  <line x1="60" y1="240" x2="736" y2="240" stroke="var(--bad)" stroke-width="1.3" stroke-dasharray="3 3"/>
+  <text x="815" y="196" text-anchor="middle" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--bad)">4 · Agregación</text>
+  <text x="815" y="212" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".75">la función + el rango [5m]</text>
+  <text x="815" y="224" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".75">y el by() que agrupa</text>
+
+  <text x="14" y="272" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".7">Sin las partes 3 y 4 tienes una consulta de LOGS. Con ellas, una consulta de MÉTRICAS que se puede graficar.</text>
+</svg>
+</div>
+<figcaption>Toda consulta empieza por un selector entre llaves. Lo demás es opcional, y cada pieza añadida cuesta más trabajo de lectura.</figcaption>
+</figure>
+
+<h3>Nivel 1 · Seleccionar streams</h3>
+<p>Lo mínimo que Loki acepta. Siempre entre llaves, siempre con al menos una etiqueta.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>selectores</span></div>
+<pre><code>{job="nginx_access"}                      <span class="c"># igual</span>
+{job="nginx_access", status="500"}        <span class="c"># dos etiquetas: es un Y lógico</span>
+{job=~"nginx.+"}                          <span class="c"># coincide con expresión regular</span>
+{job="nginx_access", status!="200"}       <span class="c"># distinto de</span>
+{status=~"4..|5.."}                       <span class="c"># regex: todos los 4xx y 5xx</span></code></pre>
+</div>
+
+<div class="note warn">
+<span class="note-label">Error de principiante</span>
+<p><code>{job=~".+"}</code> selecciona absolutamente todo y lee cada byte que tengas guardado. Loki no es Google: no hay una caja de búsqueda global. <strong>Empieza siempre por el selector más estrecho que puedas</strong> y ensánchalo si hace falta.</p>
+</div>
+
+<h3>Nivel 2 · Filtrar el texto de la línea</h3>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Operador</th><th>Significado</th><th>Ejemplo</th></tr></thead>
+<tbody>
+<tr><td><code>|=</code></td><td class="d">contiene</td><td><code>{job="x"} |= "checkout"</code></td></tr>
+<tr><td><code>!=</code></td><td class="d">no contiene</td><td><code>{job="x"} != "healthz"</code></td></tr>
+<tr><td><code>|~</code></td><td class="d">coincide con regex</td><td><code>{job="x"} |~ "timeout|refused"</code></td></tr>
+<tr><td><code>!~</code></td><td class="d">no coincide con regex</td><td><code>{job="x"} !~ "^DEBUG"</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Se encadenan, y el orden importa: pon primero el filtro que descarte más líneas, porque cada uno solo ve lo que le deja el anterior.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>encadenar filtros</span></div>
+<pre><code>{job="nginx_access"} |= "checkout" != "HTTP/1.0" |~ "50[0-9]"</code></pre>
+</div>
+
+<h3>Nivel 3 · Extraer campos con un parser</h3>
+<p>Hasta aquí la línea es una cadena opaca. Un <em>parser</em> la convierte en campos con nombre.</p>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">| pattern</div><div class="txt">El más legible para formatos de posición fija. Escribes la línea sustituyendo lo que quieres por <code>&lt;nombre&gt;</code> y lo que no te importa por <code>&lt;_&gt;</code>. Los literales entre medias deben coincidir exactamente.</div></div>
+  <div class="anat-row"><div class="lab">| regexp</div><div class="txt">Para formatos irregulares. Sintaxis Go con grupos nombrados. Más potente y bastante más lento.</div></div>
+  <div class="anat-row"><div class="lab">| json</div><div class="txt">Para logs en JSON. Sin argumentos convierte cada clave en un campo.</div></div>
+  <div class="anat-row"><div class="lab">| logfmt</div><div class="txt">Para el formato <code>clave=valor clave=valor</code>.</div></div>
+</div>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>pattern sobre una línea de nginx</span></div>
+<pre><code><span class="c"># la línea real:</span>
+<span class="c"># 192.168.1.7 - - [27/Jul/2026:07:00:26 +0000] "PUT /login HTTP/1.1" 200 887</span>
+
+{job="nginx_access"}
+  | pattern `&lt;ip&gt; - - [&lt;_&gt;] "&lt;method&gt; &lt;endpoint&gt; &lt;_&gt;" &lt;code&gt; &lt;bytes_sent&gt;`</code></pre>
+</div>
+
+<div class="note tip">
+<span class="note-label">Cuidado con los nombres</span>
+<p>No llames <code>bytes</code> ni <code>duration</code> a un campo que vayas a desenvolver. <code>bytes()</code> y <code>duration()</code> son funciones de conversión de LogQL, y <code>| unwrap bytes</code> resulta ambiguo. Usa <code>bytes_sent</code>, <code>request_time</code> y te ahorras un error que cuesta media hora encontrar.</p>
+</div>
+
+<h3>Nivel 4 · Filtrar por campo extraído</h3>
+<p>Una vez parseada, la línea tiene campos con los que se puede comparar —incluso numéricamente.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>filtros de campo</span></div>
+<pre><code>{job="nginx_timed"}
+  | pattern `… &lt;request_time&gt; &lt;_&gt; &lt;_&gt;`
+  | request_time &gt; 2          <span class="c"># comparación numérica</span>
+  | endpoint = `/checkout`    <span class="c"># comparación de texto (comillas invertidas)</span></code></pre>
+</div>
+
+<h3>Nivel 5 · Reescribir la línea</h3>
+<p><code>line_format</code> sustituye el texto por una plantilla Go. Sirve para dejar solo lo que te interesa mirar.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>line_format</span></div>
+<pre><code>{job="nginx_timed"}
+  | pattern `&lt;ip&gt; - - [&lt;_&gt;] "&lt;method&gt; &lt;path&gt; &lt;_&gt;" &lt;code&gt; &lt;_&gt; "&lt;_&gt;" "&lt;_&gt;" &lt;request_time&gt; &lt;_&gt; &lt;txn&gt;`
+  | request_time &gt; 2
+  | line_format `{{.request_time}}s [{{.code}}] {{.method}} {{.path}} {{.txn}}`
+
+<span class="c"># resultado: 2.099s [500] PUT /login txn_a3f9c1b2</span></code></pre>
+</div>
+
+<h3>Nivel 6 · De logs a números</h3>
+<p>Aquí es donde una consulta se vuelve graficable. Hay <strong>dos familias</strong> y confundirlas es el error más común.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Familia</th><th>Sobre qué opera</th><th>Funciones</th></tr></thead>
+<tbody>
+<tr><td class="d"><strong>Cuenta líneas</strong></td><td class="d">El número de líneas, sin mirar su contenido. No lleva <code>unwrap</code>.</td><td><code>rate</code>, <code>count_over_time</code>, <code>bytes_rate</code>, <code>bytes_over_time</code></td></tr>
+<tr><td class="d"><strong>Mide valores</strong></td><td class="d">Un número extraído de cada línea. <strong>Exige <code>unwrap</code></strong>.</td><td><code>avg_over_time</code>, <code>sum_over_time</code>, <code>max_over_time</code>, <code>min_over_time</code>, <code>quantile_over_time</code>, <code>stddev_over_time</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>las dos familias</span></div>
+<pre><code><span class="c"># CUENTA: peticiones por segundo, por código de estado</span>
+sum by (status) (rate({job="nginx_access"}[5m]))
+
+<span class="c"># MIDE: media de bytes por respuesta, por método</span>
+avg_over_time(
+  {job="nginx_access"}
+    | pattern `&lt;_&gt; - - [&lt;_&gt;] "&lt;method&gt; &lt;_&gt; &lt;_&gt;" &lt;_&gt; &lt;bytes_sent&gt;`
+    | unwrap bytes_sent [5m]
+) by (method)</code></pre>
+</div>
+
+<div class="note warn">
+<span class="note-label">Error real · count_over_time no admite unwrap</span>
+<p>Si escribes <code>count_over_time(… | unwrap x [5m])</code> Loki responde <code>parse error: invalid aggregation count_over_time with unwrap</code>. Cuenta líneas, no valores: quítale el <code>unwrap</code>.</p>
+</div>
+
+<h3>Nivel 7 · La trampa del <code>by()</code></h3>
+<p>Esta merece su propia sección porque produce gráficas que <em>parecen</em> correctas.</p>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 250" role="img" aria-label="Una agregación de rango sin by conserva las etiquetas del stream y devuelve una serie por stream; con by de una etiqueta agrupa; envuelta en sum devuelve una sola serie.">
+  <text x="14" y="20" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".55">20 streams de partida (4 status × 5 endpoints)</text>
+
+  <!-- caso A -->
+  <rect x="14" y="36" width="280" height="94" rx="4" fill="none" stroke="var(--bad)" stroke-width="1.5"/>
+  <text x="28" y="58" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--bad)">quantile_over_time(0.95, …)</text>
+  <text x="28" y="74" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".5">sin by()</text>
+  <g fill="var(--bad)" opacity=".45">
+    <rect x="28" y="86" width="9" height="9"/><rect x="41" y="86" width="9" height="9"/><rect x="54" y="86" width="9" height="9"/>
+    <rect x="67" y="86" width="9" height="9"/><rect x="80" y="86" width="9" height="9"/><rect x="93" y="86" width="9" height="9"/>
+    <rect x="106" y="86" width="9" height="9"/><rect x="119" y="86" width="9" height="9"/><rect x="132" y="86" width="9" height="9"/>
+    <rect x="145" y="86" width="9" height="9"/><rect x="158" y="86" width="9" height="9"/><rect x="171" y="86" width="9" height="9"/>
+    <rect x="184" y="86" width="9" height="9"/><rect x="197" y="86" width="9" height="9"/><rect x="210" y="86" width="9" height="9"/>
+    <rect x="223" y="86" width="9" height="9"/><rect x="236" y="86" width="9" height="9"/><rect x="249" y="86" width="9" height="9"/>
+    <rect x="262" y="86" width="9" height="9"/><rect x="275" y="86" width="9" height="9"/>
+  </g>
+  <text x="28" y="118" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--bad)">20 series — casi nunca es lo que quieres</text>
+
+  <!-- caso B -->
+  <rect x="310" y="36" width="280" height="94" rx="4" fill="none" stroke="var(--good)" stroke-width="1.5"/>
+  <text x="324" y="58" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--good)">… [5m]) by (endpoint)</text>
+  <text x="324" y="74" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".5">agrupa por una etiqueta</text>
+  <g fill="var(--good)" opacity=".55">
+    <rect x="324" y="84" width="26" height="13"/><rect x="358" y="84" width="26" height="13"/><rect x="392" y="84" width="26" height="13"/>
+    <rect x="426" y="84" width="26" height="13"/><rect x="460" y="84" width="26" height="13"/>
+  </g>
+  <text x="324" y="118" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--good)">5 series — una por endpoint</text>
+
+  <!-- caso C -->
+  <rect x="606" y="36" width="280" height="94" rx="4" fill="none" stroke="var(--steel)" stroke-width="1.5"/>
+  <text x="620" y="58" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--steel)">| drop status, endpoint …</text>
+  <text x="620" y="74" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".5">quita las etiquetas antes</text>
+  <rect x="620" y="82" width="60" height="16" fill="var(--steel)" opacity=".55"/>
+  <text x="620" y="118" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--steel)">1 serie — el global de verdad</text>
+
+  <line x1="14" y1="152" x2="886" y2="152" stroke="currentColor" stroke-width="1" opacity=".15"/>
+  <text x="14" y="176" font-family="Archivo, sans-serif" font-size="13.5" font-weight="600" fill="currentColor">Por qué pasa</text>
+  <text x="14" y="198" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".8">Las agregaciones de rango se calculan POR STREAM y conservan sus etiquetas.</text>
+  <text x="14" y="216" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".8">Un panel Stat con 20 series muestra una al azar, y parece un número plausible.</text>
+  <text x="14" y="238" font-family="JetBrains Mono, monospace" font-size="11.5" fill="var(--accent)">Comprueba siempre cuántas series devuelve antes de fiarte de un panel.</text>
+</svg>
+</div>
+<figcaption>Un percentil no se puede promediar después: para un p95 global hay que eliminar las etiquetas <em>antes</em> del <code>unwrap</code>, con <code>| drop</code>.</figcaption>
+</figure>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>p95 global de verdad</span></div>
+<pre><code>quantile_over_time(0.95,
+  {job="nginx_timed"}
+    | pattern `… &lt;request_time&gt; &lt;_&gt; &lt;_&gt;`
+<span class="hl">    | drop status, endpoint, filename</span>
+    | unwrap request_time [5m])</code></pre>
+</div>
+
+<h3>Nivel 8 · Media ponderada</h3>
+<p>Para un promedio global no basta con <code>avg()</code> por fuera: eso promedia promedios de tramos con distinto número de muestras. La forma correcta es dividir sumas.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>media ponderada</span></div>
+<pre><code>sum(sum_over_time({job="nginx_timed"} | pattern `…` | unwrap request_time [5m]))
+/
+sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
+</div>
+<p>Con datos uniformes la diferencia es de décimas; con tráfico real desbalanceado, no.</p>
+
+<div class="note key">
+<span class="note-label">Variables de Grafana</span>
+<p>En los paneles verás <code>[$__interval]</code> y <code>[$__range]</code>. El primero es el ancho de un píxel de la gráfica —Grafana lo calcula según el zoom—; el segundo es todo el rango de tiempo visible, y es el que se usa en las consultas instantáneas de los paneles Stat. <code>$__auto</code> hace lo mismo que <code>$__interval</code> pero solo existe desde Grafana 10.2.</p>
+</div>
+</div>
+</section>
+
+<!-- ================= CAP 6 ================= -->
+<section class="chapter" id="c6">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 06</div>
+  <h2>El error que vas a ver: «entry too far behind»</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">Si cargas un histórico en Loki, este error aparece. Merece un capítulo entero porque la solución evidente —la que sugiere el propio mensaje— no funciona.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">docker compose logs promtail</span><span></span></div>
+<pre><code><span class="bad-line">level=error caller=client.go:430 component=client host=loki:3100
+  msg="final error sending batch" status=400
+  error="entry with timestamp 2026-08-08 10:24:26 +0000 UTC ignored,
+         reason: 'entry too far behind, oldest acceptable timestamp is:
+         2026-08-25T20:58:33Z'"</span></code></pre>
+</div>
+
+<h3>Por qué <code>reject_old_samples: false</code> no lo arregla</h3>
+<p>Porque ese ajuste desactiva el <strong>control nº 1</strong> del diagrama del capítulo 02, el del <em>distributor</em>. Este error viene del <strong>control nº 2</strong>, el del <em>ingester</em>, que es otro código y otro parámetro.</p>
+
+<p>Con <code>unordered_writes</code> activo —lo está por defecto—, el ingester acepta líneas desordenadas solo dentro de una ventana hacia atrás igual a <code>max_chunk_age / 2</code>, medida <strong>desde la línea más reciente que ya ha visto ese stream</strong>. Con el valor por defecto de <code>2h</code>, esa ventana es de <strong>una hora</strong>.</p>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 340" role="img" aria-label="Con el fichero desordenado, la primera línea reciente fija la cabeza del stream y todo lo anterior a una hora queda rechazado. Con el fichero ordenado cronológicamente cada línea avanza la cabeza y ninguna cae fuera de la ventana.">
+  <defs>
+    <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- CASO A -->
+  <text x="14" y="20" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--bad)">Fichero desordenado — lo que pasa</text>
+
+  <line x1="60" y1="86" x2="850" y2="86" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar3)"/>
+  <text x="60" y="106" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">hace 30 días</text>
+  <text x="800" y="106" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">ahora</text>
+
+  <!-- zona rechazada -->
+  <rect x="60" y="52" width="700" height="28" fill="var(--bad)" opacity=".13"/>
+  <text x="410" y="46" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="700" fill="var(--bad)">RECHAZADO — el 97 % de tus líneas</text>
+
+  <!-- ventana aceptada -->
+  <rect x="760" y="52" width="60" height="28" fill="var(--good)" opacity=".22"/>
+  <line x1="760" y1="44" x2="760" y2="94" stroke="var(--accent)" stroke-width="2"/>
+  <text x="790" y="46" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" font-weight="700" fill="var(--good)">OK</text>
+
+  <text x="757" y="126" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--accent)">corte = cabeza − max_chunk_age/2</text>
+  <line x1="760" y1="94" x2="760" y2="116" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 2"/>
+
+  <line x1="820" y1="52" x2="820" y2="94" stroke="var(--ink)" stroke-width="2"/>
+  <text x="886" y="128" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">cabeza del stream</text>
+  <line x1="820" y1="94" x2="820" y2="116" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
+
+  <!-- lineas del fichero -->
+  <g font-family="JetBrains Mono, monospace" font-size="10.5">
+    <circle cx="820" cy="66" r="3.5" fill="var(--good)"/>
+    <circle cx="180" cy="66" r="3.5" fill="var(--bad)"/>
+    <circle cx="520" cy="66" r="3.5" fill="var(--bad)"/>
+    <circle cx="300" cy="66" r="3.5" fill="var(--bad)"/>
+    <circle cx="660" cy="66" r="3.5" fill="var(--bad)"/>
+    <circle cx="420" cy="66" r="3.5" fill="var(--bad)"/>
+  </g>
+  <text x="14" y="152" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".8">La 1ª línea que llega es de «casi ahora» → fija la cabeza al extremo derecho.</text>
+  <text x="14" y="168" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".8">Todas las demás llegan por detrás del corte y se descartan una a una.</text>
+
+  <line x1="14" y1="188" x2="886" y2="188" stroke="currentColor" stroke-width="1" opacity=".15"/>
+
+  <!-- CASO B -->
+  <text x="14" y="216" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--good)">Fichero ordenado cronológicamente — la solución de fondo</text>
+
+  <line x1="60" y1="280" x2="850" y2="280" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar3)"/>
+  <rect x="60" y="248" width="760" height="26" fill="var(--good)" opacity=".16"/>
+  <text x="440" y="242" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="700" fill="var(--good)">TODO ACEPTADO</text>
+
+  <g>
+    <circle cx="110" cy="261" r="3.5" fill="var(--good)"/>
+    <circle cx="230" cy="261" r="3.5" fill="var(--good)"/>
+    <circle cx="350" cy="261" r="3.5" fill="var(--good)"/>
+    <circle cx="470" cy="261" r="3.5" fill="var(--good)"/>
+    <circle cx="590" cy="261" r="3.5" fill="var(--good)"/>
+    <circle cx="710" cy="261" r="3.5" fill="var(--good)"/>
+    <circle cx="810" cy="261" r="3.5" fill="var(--good)"/>
+  </g>
+  <path d="M 110 292 L 810 292" stroke="var(--good)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ar3)"/>
+  <text x="440" y="308" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--good)">cada línea avanza la cabeza: nunca hay nada «por detrás»</text>
+  <text x="14" y="330" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".75">Ordenar el fichero antes de ingerirlo hace innecesario tocar max_chunk_age.</text>
+</svg>
+</div>
+<figcaption>El corte es relativo a la línea más nueva del stream, no a la hora actual. Por eso el mensaje de error repite siempre la misma fecha por muchas veces que reintentes.</figcaption>
+</figure>
+
+<h3>Las dos soluciones</h3>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">De fondo</div><div class="txt"><strong>Ordena el fichero por fecha antes de ingerirlo.</strong> Si las líneas llegan en orden, cada una avanza la cabeza del stream y ninguna cae por detrás del corte. No hay nada que configurar.</div></div>
+  <div class="anat-row"><div class="lab">De emergencia</div><div class="txt">Si no puedes ordenar el origen, <strong>ensancha la ventana</strong>. Recuerda que la tolerancia es la <em>mitad</em> de <code>max_chunk_age</code>: para cubrir 30 días de histórico necesitas al menos 1440 h, y conviene un margen.</div></div>
+</div>
+
+<div class="code">
+<div class="code-bar"><span class="tag">loki-config.yml</span><span>solución de emergencia</span></div>
+<pre><code><span class="k">ingester:</span>
+  <span class="k">max_chunk_age:</span> <span class="v">1560h</span>   <span class="c"># 1560/2 = 32,5 días de tolerancia hacia atrás</span>
+
+<span class="k">limits_config:</span>
+  <span class="k">reject_old_samples:</span> <span class="v">false</span>   <span class="c"># hace falta también, pero NO basta por sí solo</span>
+  <span class="k">reject_old_samples_max_age:</span> <span class="v">8760h</span></code></pre>
+</div>
+
+<div class="note warn">
+<span class="note-label">Después de arreglarlo, hay que rebobinar</span>
+<p>Promtail reintenta un lote rechazado, se rinde y <strong>avanza la posición igualmente</strong>. Cambiar la configuración de Loki no recupera las líneas perdidas: hay que borrar el fichero de posiciones y reiniciar. Como lo escribe <code>root</code> dentro del contenedor, lo más cómodo es borrarlo desde otro contenedor:</p>
+<div class="code" style="margin:.9rem 0 0">
+<pre><code>docker compose down
+docker run --rm -v "$PWD/promtail-data:/d" alpine:3 rm -f /d/positions.yaml
+docker compose up -d</code></pre>
+</div>
+</div>
+
+<h3>Comprobar que ha funcionado</h3>
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>verificación</span></div>
+<pre><code><span class="c"># ¿queda algún rechazo?</span>
+docker compose logs promtail | grep -c "too far behind"
+
+<span class="c"># ¿cuántas líneas ha aceptado Loki?</span>
+docker compose exec loki wget -qO- http://localhost:3100/metrics \
+  | grep '^loki_distributor_lines_received_total'
+
+<span class="c"># ¿existen ya las etiquetas?</span>
+curl -s http://localhost:3100/loki/api/v1/labels</code></pre>
+</div>
+
+<div class="note tip">
+<span class="note-label">Otra trampa de la misma familia</span>
+<p>Un <code>__path__</code> con comodín (<code>*.log</code>) se traga cualquier fichero nuevo del directorio y le aplica el parseo del primer trabajo que coincida. Si añades un fichero con otro formato, se ingiere con las etiquetas equivocadas y no te enteras hasta que una consulta devuelve nada. Usa rutas explícitas cuando convivan formatos distintos.</p>
+</div>
+</div>
+</section>
+
+<!-- ================= CAP 7 ================= -->
+<section class="chapter" id="c7">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 07</div>
+  <h2>Medir latencia: lo que no está en el log no se puede consultar</h2>
+</div>
+
+<div class="wrap">
+<p>El formato por defecto de nginx —<em>common log format</em>— no contiene ningún dato temporal por petición:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">common log format</span><span>sin latencia</span></div>
+<pre><code>192.168.1.7 - - [27/Jul/2026:07:00:26 +0000] "PUT /login HTTP/1.1" 200 887
+                                                                  <span class="c">───┬─ ─┬─</span>
+                                                              <span class="c">status ──┘   │</span>
+                                                       <span class="c">body_bytes_sent ─┘</span></code></pre>
+</div>
+
+<p>Ese último número son <strong>bytes</strong>, no milisegundos. Ninguna consulta puede extraer un dato que no se escribió. Hay que cambiar el <code>log_format</code> de nginx:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">nginx.conf</span><span>formato con tiempos</span></div>
+<pre><code>log_format timed '$remote_addr - $remote_user [$time_local] "$request" '
+                 '$status $body_bytes_sent "$http_referer" "$http_user_agent" '
+<span class="hl">                 '$request_time $upstream_response_time $request_id';</span>
+
+access_log /var/log/nginx/access.log timed;</code></pre>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">$request_time</div><div class="txt">Lo que tarda <strong>desde el punto de vista del cliente</strong>: desde el primer byte de la petición hasta el último de la respuesta. Incluye red y TLS.</div></div>
+  <div class="anat-row"><div class="lab">$upstream_response_time</div><div class="txt">Lo que tardó <strong>tu aplicación</strong> en responderle a nginx. Siempre menor.</div></div>
+  <div class="anat-row"><div class="lab">La diferencia</div><div class="txt">Es el coste de red, TLS y <em>buffering</em>. Si se dispara, el problema no está en tu código. Graficar ambas superpuestas es de los paneles más útiles que puedes tener.</div></div>
+</div>
+
+<h3>Media contra percentiles</h3>
+<p>La latencia no se distribuye como una campana: tiene una cola larga a la derecha. La media queda arrastrada por esa cola y aun así <em>subestima</em> lo que sufren los usuarios más desafortunados.</p>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 250" role="img" aria-label="La distribución de latencias tiene una cola larga; la mediana está a la izquierda, la media un poco a su derecha, y el percentil 99 muy lejos en la cola.">
+  <!-- curva log-normal aproximada -->
+  <path d="M 60 200 C 90 200, 108 60, 140 56 C 172 52, 196 96, 224 128 C 252 160, 284 178, 320 187 C 360 194, 420 197, 500 199 C 600 200, 700 200, 840 200"
+        fill="none" stroke="var(--steel)" stroke-width="2"/>
+  <path d="M 60 200 C 90 200, 108 60, 140 56 C 172 52, 196 96, 224 128 C 252 160, 284 178, 320 187 C 360 194, 420 197, 500 199 C 600 200, 700 200, 840 200 L 840 200 L 60 200 Z"
+        fill="var(--steel)" opacity=".13"/>
+
+  <line x1="60" y1="200" x2="860" y2="200" stroke="currentColor" stroke-width="1.2"/>
+  <text x="860" y="220" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".6">tiempo de respuesta →</text>
+
+  <!-- p50 -->
+  <line x1="150" y1="60" x2="150" y2="200" stroke="var(--good)" stroke-width="2"/>
+  <text x="150" y="50" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="700" fill="var(--good)">p50</text>
+  <text x="150" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--good)">0,131 s</text>
+
+  <!-- media -->
+  <line x1="232" y1="90" x2="232" y2="200" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="232" y="80" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="700" fill="var(--accent)">media</text>
+  <text x="232" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--accent)">0,314 s</text>
+
+  <!-- p90 -->
+  <line x1="330" y1="140" x2="330" y2="200" stroke="currentColor" stroke-width="1.5" opacity=".6"/>
+  <text x="330" y="132" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".7">p90</text>
+  <text x="330" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".7">0,764 s</text>
+
+  <!-- p99 -->
+  <line x1="620" y1="150" x2="620" y2="200" stroke="var(--bad)" stroke-width="2"/>
+  <text x="620" y="142" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="700" fill="var(--bad)">p99</text>
+  <text x="620" y="222" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--bad)">2,706 s</text>
+
+  <path d="M 240 168 L 610 168" stroke="var(--bad)" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="425" y="162" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--bad)">la media no ve nada de esto</text>
+
+  <text x="60" y="244" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".7">Valores medidos sobre los datos de ejemplo de este proyecto. El p99 es 20 veces la mediana.</text>
+</svg>
+</div>
+<figcaption>Si vas a poner un solo número en un panel, que sea un percentil. La media solo es útil cuando se enseña <em>junto</em> a ellos, para ver cuánto la separa la cola.</figcaption>
+</figure>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>las cuatro consultas de latencia</span></div>
+<pre><code><span class="c"># media por endpoint — la gráfica base</span>
+avg_over_time({job="nginx_timed"}
+  | pattern `&lt;_&gt; - - [&lt;_&gt;] "&lt;_&gt; &lt;_&gt; &lt;_&gt;" &lt;_&gt; &lt;_&gt; "&lt;_&gt;" "&lt;_&gt;" &lt;request_time&gt; &lt;_&gt; &lt;_&gt;`
+  | unwrap request_time [$__interval]) by (endpoint)
+
+<span class="c"># p99 global (ojo al drop)</span>
+quantile_over_time(0.99, {job="nginx_timed"}
+  | pattern `…`
+  | drop status, endpoint, filename
+  | unwrap request_time [$__interval])
+
+<span class="c"># cuántas peticiones superan los 2 s</span>
+sum(count_over_time({job="nginx_timed"} | pattern `…` | request_time &gt; 2 [$__interval]))
+
+<span class="c"># Apdex: fracción de peticiones por debajo del umbral de satisfacción</span>
+sum(count_over_time({job="nginx_timed"} | pattern `…` | request_time &lt; 0.5 [$__interval]))
+/
+sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
+</div>
+</div>
+</section>
+
+<!-- ================= CAP 8 ================= -->
+<section class="chapter" id="c8">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 08</div>
+  <h2>Chuleta</h2>
+</div>
+
+<div class="wrap">
+<h3>Diagnóstico rápido</h3>
+<div class="tbl">
+<table>
+<thead><tr><th>Síntoma</th><th>Dónde mirar</th></tr></thead>
+<tbody>
+<tr><td class="d">Grafana no ve datos</td><td class="d">¿El rango de tiempo cubre las fechas de tus logs? Es la causa en 8 de cada 10 casos.</td></tr>
+<tr><td class="d"><code>entry too far behind</code></td><td class="d"><code>ingester.max_chunk_age</code>, no <code>reject_old_samples</code>. Capítulo 06.</td></tr>
+<tr><td class="d"><code>entry out of order</code></td><td class="d"><code>unordered_writes: false</code>. Ponlo a <code>true</code>.</td></tr>
+<tr><td class="d"><code>per stream rate limit</code></td><td class="d"><code>per_stream_rate_limit</code>. Todos tus logs caen en un solo stream.</td></tr>
+<tr><td class="d"><code>maximum of series reached</code></td><td class="d">Cardinalidad. Tienes una etiqueta que no debería serlo. Capítulo 04.</td></tr>
+<tr><td class="d"><code>permission denied</code> al arrancar</td><td class="d">El volumen es de <code>root</code> y Loki corre como <code>10001</code>.</td></tr>
+<tr><td class="d">Promtail no relee un fichero</td><td class="d"><code>positions.yaml</code>. Bórralo y reinicia.</td></tr>
+<tr><td class="d">Un panel Stat da un número raro</td><td class="d">La consulta devuelve varias series. Falta <code>by()</code> o <code>| drop</code>.</td></tr>
+<tr><td class="d">Consulta lentísima</td><td class="d">Selector demasiado ancho, o un parser aplicado a millones de líneas innecesarias.</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Comandos que vas a repetir</h3>
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>operación diaria</span></div>
+<pre><code>docker compose ps                          <span class="c"># estado de los tres servicios</span>
+docker compose logs -f promtail            <span class="c"># seguir los errores de envío</span>
+curl -s localhost:3100/ready               <span class="c"># ¿Loki vivo?</span>
+curl -s localhost:3100/loki/api/v1/labels  <span class="c"># ¿qué etiquetas existen?</span>
+curl -s "localhost:3100/loki/api/v1/label/job/values"
+
+<span class="c"># probar una consulta sin abrir Grafana</span>
+curl -s -G localhost:3100/loki/api/v1/query_range \
+  --data-urlencode 'query=sum(rate({job="nginx_access"}[5m]))' \
+  --data-urlencode "start=$(date -u -d '2 days ago' +%s)000000000" \
+  --data-urlencode "end=$(date -u +%s)000000000" \
+  --data-urlencode 'step=3600'</code></pre>
+</div>
+
+<h3>Glosario</h3>
+<div class="chips">
+  <span class="chip">stream = combinación única de etiquetas</span>
+  <span class="chip">chunk = bloque comprimido de un stream</span>
+  <span class="chip">distributor = recibe y valida</span>
+  <span class="chip">ingester = acumula en memoria</span>
+  <span class="chip">querier = responde consultas</span>
+  <span class="chip">cardinalidad = nº de streams distintos</span>
+  <span class="chip">unwrap = campo de texto → número</span>
+  <span class="chip">positions.yaml = memoria de Promtail</span>
+  <span class="chip">provisioning = configurar Grafana por fichero</span>
+</div>
+
+<div class="note key">
+<span class="note-label">Las cinco reglas</span>
+<p><strong>1.</strong> Pocas etiquetas, y de valores cerrados. Todo lo demás se extrae al consultar.<br>
+<strong>2.</strong> El selector primero y lo más estrecho posible; el parser después.<br>
+<strong>3.</strong> Antes de fiarte de un panel, mira cuántas series devuelve.<br>
+<strong>4.</strong> Los logs históricos van ordenados por fecha, o no entran.<br>
+<strong>5.</strong> Si Grafana no ve nada, revisa el rango de tiempo antes que la configuración.</p>
+</div>
+</div>
+</section>
+
+</main>
+</div>
