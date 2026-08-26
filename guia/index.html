@@ -274,10 +274,11 @@ td.d{font-family:var(--f-body)}
     <a href="#c2"><span class="n">02</span><span>loki-config.yml</span></a>
     <a href="#c3"><span class="n">03</span><span>promtail-config.yml</span></a>
     <a href="#c4"><span class="n">04</span><span>Labels, streams, cardinalidad</span></a>
-    <a href="#c5"><span class="n">05</span><span>LogQL desde cero</span></a>
-    <a href="#c6"><span class="n">06</span><span>El error que vas a ver</span></a>
-    <a href="#c7"><span class="n">07</span><span>Medir latencia</span></a>
-    <a href="#c8"><span class="n">08</span><span>Chuleta</span></a>
+    <a href="#c5"><span class="n">05</span><span>Varios proyectos</span></a>
+    <a href="#c6"><span class="n">06</span><span>LogQL desde cero</span></a>
+    <a href="#c7"><span class="n">07</span><span>El error que vas a ver</span></a>
+    <a href="#c8"><span class="n">08</span><span>Medir latencia</span></a>
+    <a href="#c9"><span class="n">09</span><span>Chuleta</span></a>
   </nav>
 </aside>
 
@@ -623,7 +624,7 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
   <text x="595" y="292" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--steel)">← Grafana pregunta aquí</text>
 </svg>
 </div>
-<figcaption>Hay <strong>dos</strong> controles de antigüedad, no uno, y viven en componentes distintos. Desactivar el primero no desactiva el segundo: ese malentendido es el capítulo 06 de esta guía.</figcaption>
+<figcaption>Hay <strong>dos</strong> controles de antigüedad, no uno, y viven en componentes distintos. Desactivar el primero no desactiva el segundo: ese malentendido es el capítulo 07 de esta guía.</figcaption>
 </figure>
 
 <h3>El esqueleto mínimo</h3>
@@ -933,6 +934,335 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 <section class="chapter" id="c5">
 <div class="chapter-head">
   <div class="chapter-num">Capítulo 05</div>
+  <h2>Varios proyectos y varias fuentes en el mismo Loki</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">La pregunta llega en cuanto el stack funciona: tengo cinco proyectos, ¿levanto cinco Lokis? No. Un solo Loki aloja todos, y lo que los separa son las etiquetas. Pero hay tres formas de organizarlo y elegir mal se paga caro.</p>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 300" role="img" aria-label="Tres formas de separar proyectos: un scrape_config por proyecto, un glob con relabeling desde la ruta, o inquilinos separados de Loki.">
+  <defs>
+    <marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- A -->
+  <text x="14" y="22" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="currentColor">A · Un bloque por proyecto</text>
+  <rect x="14" y="34" width="76" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="52" y="50" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor">tienda</text>
+  <rect x="14" y="64" width="76" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="52" y="80" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor">pagos</text>
+  <rect x="14" y="94" width="76" height="24" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="52" y="110" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor">crm</text>
+
+  <line x1="94" y1="76" x2="130" y2="76" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar5)"/>
+  <rect x="134" y="52" width="112" height="48" rx="3" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <text x="190" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor">3 scrape_configs</text>
+  <text x="190" y="88" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity=".6">escritos a mano</text>
+  <text x="14" y="140" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--good)">+ cada proyecto puede parsearse distinto</text>
+  <text x="14" y="156" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--bad)">− añadir un proyecto = editar el YAML</text>
+
+  <line x1="286" y1="14" x2="286" y2="286" stroke="currentColor" stroke-width="1" opacity=".18"/>
+
+  <!-- B -->
+  <text x="308" y="22" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--accent)">B · Un glob + relabeling</text>
+  <text x="308" y="44" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity=".7">/logs/</text>
+  <text x="322" y="60" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity=".7">tienda/app.log</text>
+  <text x="322" y="76" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity=".7">pagos/app.log</text>
+  <text x="322" y="92" font-family="JetBrains Mono, monospace" font-size="10" fill="currentColor" opacity=".7">crm/app.log</text>
+
+  <line x1="440" y1="70" x2="476" y2="70" stroke="var(--accent)" stroke-width="1.6" marker-end="url(#ar5)"/>
+  <rect x="480" y="46" width="120" height="48" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="540" y="66" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)">1 scrape_config</text>
+  <text x="540" y="82" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--accent)">project=&lt;carpeta&gt;</text>
+  <text x="308" y="140" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--good)">+ un proyecto nuevo se detecta solo</text>
+  <text x="308" y="156" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--bad)">− todos comparten el mismo parseo</text>
+
+  <line x1="616" y1="14" x2="616" y2="286" stroke="currentColor" stroke-width="1" opacity=".18"/>
+
+  <!-- C -->
+  <text x="638" y="22" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--steel)">C · Inquilinos separados</text>
+  <rect x="638" y="40" width="112" height="26" rx="3" fill="var(--steel-soft)" stroke="var(--steel)" stroke-width="1.2"/>
+  <text x="694" y="58" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--steel)">tenant: tienda</text>
+  <rect x="638" y="72" width="112" height="26" rx="3" fill="var(--steel-soft)" stroke="var(--steel)" stroke-width="1.2"/>
+  <text x="694" y="90" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--steel)">tenant: pagos</text>
+  <text x="638" y="140" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--good)">+ aislamiento real: límites y borrado</text>
+  <text x="638" y="156" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--good)">+ nadie puede consultar lo ajeno</text>
+  <text x="638" y="172" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--bad)">− un datasource por inquilino</text>
+  <text x="638" y="188" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--bad)">− no se consulta entre proyectos</text>
+
+  <line x1="14" y1="210" x2="886" y2="210" stroke="currentColor" stroke-width="1" opacity=".18"/>
+  <text x="14" y="234" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="currentColor">Cómo elegir</text>
+  <text x="14" y="256" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".85">Formatos de log distintos, pocos proyectos, mismo equipo  →  A</text>
+  <text x="14" y="274" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".85">Muchos proyectos con la misma estructura de carpetas       →  B</text>
+  <text x="14" y="292" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".85">Equipos distintos que no deben verse entre sí, o cuotas     →  C</text>
+</svg>
+</div>
+<figcaption>A y B viven en el mismo inquilino y permiten consultas que cruzan proyectos. C los aísla de verdad, y esa misma frontera te impide correlacionar entre ellos.</figcaption>
+</figure>
+
+<h3>A · Un bloque de scrape por proyecto</h3>
+<p>Lo más directo, y lo correcto cuando cada proyecto escribe un formato distinto. Cada bloque tiene su propio <code>__path__</code> y su propio pipeline.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">promtail-config.yml</span><span>un bloque por proyecto</span></div>
+<pre><code><span class="k">scrape_configs:</span>
+  - <span class="k">job_name:</span> <span class="v">tienda</span>
+    <span class="k">static_configs:</span>
+      - <span class="k">targets:</span> [<span class="v">localhost</span>]
+        <span class="k">labels:</span>
+          <span class="k">project:</span> <span class="v">tienda</span>
+          <span class="k">env:</span> <span class="v">prod</span>
+          <span class="k">__path__:</span> <span class="v">/var/log/tienda/*.log</span>
+    <span class="k">pipeline_stages:</span>
+      - <span class="k">regex:</span> { <span class="k">expression:</span> <span class="s">'…formato de nginx…'</span> }
+      - <span class="k">labels:</span> { <span class="k">status:</span> }
+
+  - <span class="k">job_name:</span> <span class="v">api-pagos</span>
+    <span class="k">static_configs:</span>
+      - <span class="k">targets:</span> [<span class="v">localhost</span>]
+        <span class="k">labels:</span>
+          <span class="k">project:</span> <span class="v">api-pagos</span>
+          <span class="k">env:</span> <span class="v">prod</span>
+          <span class="k">__path__:</span> <span class="v">/var/log/pagos/*.log</span>
+    <span class="k">pipeline_stages:</span>
+      - <span class="k">json:</span>                        <span class="c"># este proyecto escribe JSON</span>
+          <span class="k">expressions:</span> { <span class="k">level:</span> <span class="v">level</span>, <span class="k">msg:</span> <span class="v">message</span> }
+      - <span class="k">labels:</span> { <span class="k">level:</span> }</code></pre>
+</div>
+
+<div class="note tip">
+<span class="note-label">Monta los directorios en el compose</span>
+<p>Promtail solo ve lo que le montes. Cada proyecto necesita su bind mount:</p>
+<div class="code" style="margin:.9rem 0 0">
+<pre><code>  <span class="k">promtail:</span>
+    <span class="k">volumes:</span>
+      - <span class="s">./proyectos/tienda/logs:/var/log/tienda:ro</span>
+      - <span class="s">./proyectos/pagos/logs:/var/log/pagos:ro</span>
+      - <span class="s">./promtail-config.yml:/etc/promtail/config.yml</span></code></pre>
+</div>
+<p>El <code>:ro</code> es deliberado: Promtail no tiene por qué escribir en los logs de nadie.</p>
+</div>
+
+<h3>B · Un glob y el nombre del proyecto sacado de la ruta</h3>
+<p>Cuando todos los proyectos comparten estructura, no hace falta un bloque por cada uno. Se recorre con un comodín y se deduce la etiqueta de la propia ruta del fichero.</p>
+
+<p>La clave es que <strong>Promtail añade automáticamente una etiqueta <code>filename</code></strong> con la ruta completa de cada fichero. El stage <code>regex</code> puede leerla con <code>source</code> en vez de leer el contenido de la línea.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">promtail-config.yml</span><span>relabeling desde la ruta</span></div>
+<pre><code><span class="k">scrape_configs:</span>
+  - <span class="k">job_name:</span> <span class="v">proyectos</span>
+    <span class="k">static_configs:</span>
+      - <span class="k">targets:</span> [<span class="v">localhost</span>]
+        <span class="k">labels:</span>
+          <span class="k">job:</span> <span class="v">proyectos</span>
+<span class="hl">          <span class="k">__path__:</span> <span class="v">/var/log/proyectos/*/*.log</span></span>
+    <span class="k">pipeline_stages:</span>
+<span class="hl">      <span class="c"># `source: filename` lee la RUTA, no el contenido de la línea</span>
+      - <span class="k">regex:</span>
+          <span class="k">source:</span> <span class="v">filename</span>
+          <span class="k">expression:</span> <span class="s">'/var/log/proyectos/(?P&lt;project&gt;[^/]+)/(?P&lt;logfile&gt;[^/]+)\.log$'</span></span>
+      - <span class="k">regex:</span>
+          <span class="k">expression:</span> <span class="s">'^(?P&lt;ip&gt;[^ ]+) - - \[(?P&lt;timestamp&gt;[^\]]+)\] "(?P&lt;method&gt;[A-Z]+) (?P&lt;endpoint&gt;[^ ]+) [^"]*" (?P&lt;status&gt;\d{3})'</span>
+      - <span class="k">timestamp:</span> { <span class="k">source:</span> <span class="v">timestamp</span>, <span class="k">format:</span> <span class="s">"02/Jan/2006:15:04:05 -0700"</span> }
+      - <span class="k">labels:</span>
+          <span class="k">project:</span>
+          <span class="k">logfile:</span>
+          <span class="k">status:</span></code></pre>
+</div>
+
+<p>Con esta estructura de directorios:</p>
+<div class="code">
+<div class="code-bar"><span class="tag">árbol</span><span>una carpeta por proyecto</span></div>
+<pre><code>logs/proyectos/
+├── tienda/
+│   ├── access.log
+│   └── error.log
+└── api-pagos/
+    └── access.log</code></pre>
+</div>
+
+<p>salen exactamente estos streams —comprobado sobre un Loki real:</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>project</th><th>logfile</th><th>status</th><th>líneas</th></tr></thead>
+<tbody>
+<tr><td><code>api-pagos</code></td><td><code>access</code></td><td><code>201</code></td><td class="num">3</td></tr>
+<tr><td><code>tienda</code></td><td><code>access</code></td><td><code>200</code></td><td class="num">3</td></tr>
+<tr><td><code>tienda</code></td><td><code>error</code></td><td><code>500</code></td><td class="num">3</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>Y a partir de ahí las consultas se vuelven naturales:</p>
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>consultar por proyecto</span></div>
+<pre><code>{job="proyectos", project="tienda"}                    <span class="c"># todo un proyecto</span>
+{job="proyectos", project="tienda", logfile="error"}   <span class="c"># solo su log de errores</span>
+{job="proyectos", project=~"tienda|api-pagos"}         <span class="c"># varios a la vez</span>
+
+<span class="c"># comparar la tasa de error entre TODOS los proyectos</span>
+sum by (project) (rate({job="proyectos", status=~"5.."}[5m]))</code></pre>
+</div>
+
+<div class="note key">
+<span class="note-label">Esa última consulta es el motivo de todo esto</span>
+<p>Cruzar proyectos en una sola gráfica solo es posible si comparten inquilino y tienen una etiqueta común que los distinga. Es exactamente lo que la opción C te quita.</p>
+</div>
+
+<h3>Descubrir contenedores de Docker automáticamente</h3>
+<p>Si tus proyectos son contenedores, no hace falta montar directorios: Promtail puede preguntarle al demonio de Docker qué hay corriendo y etiquetar cada log con el servicio al que pertenece.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">promtail-config.yml</span><span>docker_sd_configs</span></div>
+<pre><code><span class="k">scrape_configs:</span>
+  - <span class="k">job_name:</span> <span class="v">contenedores</span>
+    <span class="k">docker_sd_configs:</span>
+      - <span class="k">host:</span> <span class="v">unix:///var/run/docker.sock</span>
+        <span class="k">refresh_interval:</span> <span class="v">10s</span>
+    <span class="k">relabel_configs:</span>
+      <span class="c"># el nombre del contenedor llega como "/nombre": se le quita la barra</span>
+      - <span class="k">source_labels:</span> [<span class="s">'__meta_docker_container_name'</span>]
+        <span class="k">regex:</span> <span class="s">'/(.*)'</span>
+        <span class="k">target_label:</span> <span class="s">'container'</span>
+      - <span class="k">source_labels:</span> [<span class="s">'__meta_docker_container_label_com_docker_compose_service'</span>]
+        <span class="k">target_label:</span> <span class="s">'servicio'</span>
+      - <span class="k">source_labels:</span> [<span class="s">'__meta_docker_container_label_com_docker_compose_project'</span>]
+        <span class="k">target_label:</span> <span class="s">'proyecto'</span></code></pre>
+</div>
+
+<p>Compose escribe etiquetas en cada contenedor que crea, y de ahí salen <code>servicio</code> y <code>proyecto</code> sin que tengas que declararlos. Hay que montarle el socket:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">docker-compose.yml</span><span></span></div>
+<pre><code>    <span class="k">volumes:</span>
+      - <span class="s">/var/run/docker.sock:/var/run/docker.sock:ro</span></code></pre>
+</div>
+
+<div class="note warn">
+<span class="note-label">Necesitas Promtail 3.x</span>
+<p>Promtail 2.9 habla la versión 1.42 de la API de Docker. Los demonios de Docker recientes exigen 1.44 como mínimo y responden:</p>
+<p><code>client version 1.42 is too old. Minimum supported API version is 1.44</code></p>
+<p>Con <code>grafana/promtail:3.2.1</code> o superior funciona sin tocar nada más. Si necesitas quedarte en 2.9, la alternativa es leer los ficheros directamente —<code>/var/lib/docker/containers/*/*-json.log</code>— y sacar el identificador del contenedor de la ruta, como en la opción B.</p>
+</div>
+
+<h3>Otras fuentes que no son ficheros</h3>
+<div class="anat">
+  <div class="anat-row"><div class="lab">syslog</div><div class="txt">Promtail escucha en un puerto y recibe syslog por red: <code>syslog: { listen_address: 0.0.0.0:1514 }</code>. Útil para equipos de red y máquinas donde no puedes instalar nada.</div></div>
+  <div class="anat-row"><div class="lab">journal</div><div class="txt"><code>journal: { path: /var/log/journal }</code> lee el diario de systemd. Requiere montar el directorio y suele necesitar <code>max_age</code> para no releer meses de histórico al arrancar.</div></div>
+  <div class="anat-row"><div class="lab">kubernetes_sd</div><div class="txt">El equivalente a <code>docker_sd</code> para clústeres: descubre pods y trae namespace, pod y contenedor como etiquetas. Es el modo estándar en Kubernetes.</div></div>
+  <div class="anat-row"><div class="lab">Push directo</div><div class="txt">Cualquier aplicación puede escribir a <code>/loki/api/v1/push</code> sin Promtail de por medio. Útil para trabajos por lotes que no dejan fichero.</div></div>
+</div>
+
+<h3>C · Inquilinos separados, cuando hace falta aislamiento de verdad</h3>
+<p>Las etiquetas separan datos, no permisos: cualquiera con acceso al datasource puede consultar todo. Si necesitas que el equipo de un proyecto no pueda leer los logs de otro, o cuotas independientes, hay que usar la multi-tenencia de Loki.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">loki-config.yml</span><span>activar inquilinos</span></div>
+<pre><code><span class="k">auth_enabled:</span> <span class="v">true</span>   <span class="c"># ahora cada petición DEBE traer X-Scope-OrgID</span></code></pre>
+</div>
+
+<div class="code">
+<div class="code-bar"><span class="tag">promtail-config.yml</span><span>un cliente por inquilino</span></div>
+<pre><code><span class="k">clients:</span>
+  - <span class="k">url:</span> <span class="v">http://loki:3100/loki/api/v1/push</span>
+    <span class="k">tenant_id:</span> <span class="v">tienda</span></code></pre>
+</div>
+
+<div class="code">
+<div class="code-bar"><span class="tag">grafana/provisioning/datasources/loki.yml</span><span>un datasource por inquilino</span></div>
+<pre><code><span class="k">datasources:</span>
+  - <span class="k">name:</span> <span class="v">Loki — tienda</span>
+    <span class="k">type:</span> <span class="v">loki</span>
+    <span class="k">uid:</span> <span class="v">loki-tienda</span>
+    <span class="k">url:</span> <span class="v">http://loki:3100</span>
+    <span class="k">jsonData:</span>
+      <span class="k">httpHeaderName1:</span> <span class="s">'X-Scope-OrgID'</span>
+    <span class="k">secureJsonData:</span>
+      <span class="k">httpHeaderValue1:</span> <span class="s">'tienda'</span>
+
+  - <span class="k">name:</span> <span class="v">Loki — pagos</span>
+    <span class="k">type:</span> <span class="v">loki</span>
+    <span class="k">uid:</span> <span class="v">loki-pagos</span>
+    <span class="k">url:</span> <span class="v">http://loki:3100</span>
+    <span class="k">jsonData:</span>
+      <span class="k">httpHeaderName1:</span> <span class="s">'X-Scope-OrgID'</span>
+    <span class="k">secureJsonData:</span>
+      <span class="k">httpHeaderValue1:</span> <span class="s">'pagos'</span></code></pre>
+</div>
+
+<p>El aislamiento se completa con los permisos de Grafana: cada datasource se restringe a un equipo, y los paneles de un proyecto solo pueden apuntar al suyo.</p>
+
+<div class="note warn">
+<span class="note-label">Lo que pierdes</span>
+<p>Una consulta <strong>no puede cruzar inquilinos</strong>. Ese <code>sum by (project) (rate(…))</code> que compara la tasa de error de todos tus proyectos en una gráfica deja de ser posible. No actives la multi-tenencia porque suene más profesional: actívala cuando el aislamiento sea un requisito real.</p>
+</div>
+
+<h3>Organizarlo en Grafana</h3>
+<p>Con las etiquetas puestas, un solo dashboard sirve para todos los proyectos. Se declara una variable y se usa en los selectores.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">dashboard.json</span><span>variable de proyecto</span></div>
+<pre><code><span class="k">"templating"</span>: { <span class="k">"list"</span>: [
+  {
+    <span class="k">"name"</span>: <span class="s">"project"</span>,
+    <span class="k">"label"</span>: <span class="s">"Proyecto"</span>,
+    <span class="k">"type"</span>: <span class="s">"query"</span>,
+    <span class="k">"datasource"</span>: { <span class="k">"type"</span>: <span class="s">"loki"</span>, <span class="k">"uid"</span>: <span class="s">"loki"</span> },
+    <span class="k">"query"</span>: { <span class="k">"label"</span>: <span class="s">"project"</span>, <span class="k">"stream"</span>: <span class="s">"{job=\"proyectos\"}"</span>, <span class="k">"type"</span>: 1 },
+    <span class="k">"refresh"</span>: 1,
+    <span class="k">"includeAll"</span>: true,
+    <span class="k">"multi"</span>: true
+  }
+]}</code></pre>
+</div>
+
+<p>El campo <code>stream</code> limita los valores ofrecidos a los que existen dentro de ese selector, en vez de listar todos los valores de la etiqueta en todo Loki. Después, en cada panel:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>panel reutilizable</span></div>
+<pre><code>sum by (project) (rate({job="proyectos", project=~"$project"}[$__interval]))</code></pre>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">Carpetas</div><div class="txt">El <code>folder</code> del proveedor de dashboards agrupa por equipo. Puedes declarar varios proveedores apuntando a subdirectorios distintos, cada uno con su carpeta.</div></div>
+  <div class="anat-row"><div class="lab">Un dashboard, no diez</div><div class="txt">Con la variable <code>$project</code>, un único dashboard cubre todos los proyectos. Diez copias del mismo JSON son diez sitios donde arreglar el mismo fallo.</div></div>
+  <div class="anat-row"><div class="lab">Enlaces</div><div class="txt">Los <em>data links</em> de un panel pueden llevar al dashboard de detalle del proyecto pinchado, pasando <code>var-project=${__field.labels.project}</code>.</div></div>
+</div>
+
+<h3>El presupuesto de cardinalidad se multiplica</h3>
+<p>Recuerda el capítulo anterior: el número de streams es el producto de todas las etiquetas. Añadir <code>project</code> multiplica lo que ya tenías.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Etiquetas</th><th>Valores</th><th>Streams</th></tr></thead>
+<tbody>
+<tr><td><code>job</code>, <code>status</code></td><td class="d">1 × 4</td><td class="num">4</td></tr>
+<tr><td>+ <code>endpoint</code></td><td class="d">1 × 4 × 5</td><td class="num">20</td></tr>
+<tr><td>+ <code>project</code> (10 proyectos)</td><td class="d">10 × 4 × 5</td><td class="num">200</td></tr>
+<tr><td>+ <code>env</code> (prod, staging, dev)</td><td class="d">10 × 4 × 5 × 3</td><td class="num" style="color:var(--bad);font-weight:600">600</td></tr>
+</tbody>
+</table>
+</div>
+
+<p>600 streams siguen siendo perfectamente manejables —Loki aguanta decenas de miles—, pero la progresión enseña la lección: cada etiqueta nueva multiplica, no suma. Antes de añadir una, pregúntate si de verdad vas a filtrar por ella.</p>
+
+<div class="note tip">
+<span class="note-label">Un orden que funciona</span>
+<p><code>env</code> primero, luego <code>project</code>, luego <code>job</code> o <code>logfile</code>, y por último el detalle del contenido (<code>status</code>, <code>level</code>). Los tres primeros los pones tú y son estables; el último sale del log y conviene vigilarlo.</p>
+</div>
+</div>
+</section>
+
+<!-- ================= CAP 6 ================= -->
+<section class="chapter" id="c6">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 06</div>
   <h2>LogQL desde cero</h2>
 </div>
 
@@ -1182,9 +1512,9 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
 </section>
 
 <!-- ================= CAP 6 ================= -->
-<section class="chapter" id="c6">
+<section class="chapter" id="c7">
 <div class="chapter-head">
-  <div class="chapter-num">Capítulo 06</div>
+  <div class="chapter-num">Capítulo 07</div>
   <h2>El error que vas a ver: «entry too far behind»</h2>
 </div>
 
@@ -1324,9 +1654,9 @@ curl -s http://localhost:3100/loki/api/v1/labels</code></pre>
 </section>
 
 <!-- ================= CAP 7 ================= -->
-<section class="chapter" id="c7">
+<section class="chapter" id="c8">
 <div class="chapter-head">
-  <div class="chapter-num">Capítulo 07</div>
+  <div class="chapter-num">Capítulo 08</div>
   <h2>Medir latencia: lo que no está en el log no se puede consultar</h2>
 </div>
 
@@ -1427,9 +1757,9 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 </section>
 
 <!-- ================= CAP 8 ================= -->
-<section class="chapter" id="c8">
+<section class="chapter" id="c9">
 <div class="chapter-head">
-  <div class="chapter-num">Capítulo 08</div>
+  <div class="chapter-num">Capítulo 09</div>
   <h2>Chuleta</h2>
 </div>
 
@@ -1440,7 +1770,7 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 <thead><tr><th>Síntoma</th><th>Dónde mirar</th></tr></thead>
 <tbody>
 <tr><td class="d">Grafana no ve datos</td><td class="d">¿El rango de tiempo cubre las fechas de tus logs? Es la causa en 8 de cada 10 casos.</td></tr>
-<tr><td class="d"><code>entry too far behind</code></td><td class="d"><code>ingester.max_chunk_age</code>, no <code>reject_old_samples</code>. Capítulo 06.</td></tr>
+<tr><td class="d"><code>entry too far behind</code></td><td class="d"><code>ingester.max_chunk_age</code>, no <code>reject_old_samples</code>. Capítulo 07.</td></tr>
 <tr><td class="d"><code>entry out of order</code></td><td class="d"><code>unordered_writes: false</code>. Ponlo a <code>true</code>.</td></tr>
 <tr><td class="d"><code>per stream rate limit</code></td><td class="d"><code>per_stream_rate_limit</code>. Todos tus logs caen en un solo stream.</td></tr>
 <tr><td class="d"><code>maximum of series reached</code></td><td class="d">Cardinalidad. Tienes una etiqueta que no debería serlo. Capítulo 04.</td></tr>
@@ -1448,6 +1778,9 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 <tr><td class="d">Promtail no relee un fichero</td><td class="d"><code>positions.yaml</code>. Bórralo y reinicia.</td></tr>
 <tr><td class="d">Un panel Stat da un número raro</td><td class="d">La consulta devuelve varias series. Falta <code>by()</code> o <code>| drop</code>.</td></tr>
 <tr><td class="d">Consulta lentísima</td><td class="d">Selector demasiado ancho, o un parser aplicado a millones de líneas innecesarias.</td></tr>
+<tr><td class="d">Un proyecto nuevo no aparece</td><td class="d">El glob de <code>__path__</code> no lo cubre, o falta el bind mount del directorio en el compose.</td></tr>
+<tr><td class="d"><code>no org id</code></td><td class="d"><code>auth_enabled: true</code> sin cabecera <code>X-Scope-OrgID</code>. Capítulo 05.</td></tr>
+<tr><td class="d"><code>client version 1.42 is too old</code></td><td class="d"><code>docker_sd_configs</code> en Promtail 2.9 contra un Docker moderno. Sube a Promtail 3.x.</td></tr>
 </tbody>
 </table>
 </div>
@@ -1480,6 +1813,8 @@ curl -s -G localhost:3100/loki/api/v1/query_range \
   <span class="chip">unwrap = campo de texto → número</span>
   <span class="chip">positions.yaml = memoria de Promtail</span>
   <span class="chip">provisioning = configurar Grafana por fichero</span>
+  <span class="chip">tenant = inquilino aislado de Loki</span>
+  <span class="chip">relabeling = derivar etiquetas de la ruta o del entorno</span>
 </div>
 
 <div class="note key">
