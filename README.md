@@ -11,7 +11,7 @@ LogQL desde cero.
 ## Arrancar
 
 ```bash
-git clone https://github.com/USUARIO/grafana-loki-demo.git
+git clone https://github.com/jlaguna553/grafana-loki-demo.git
 cd grafana-loki-demo
 
 # 1. Generar los logs de ejemplo (no vienen en el repo: pesan cientos de MB)
