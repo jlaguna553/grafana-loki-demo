@@ -88,8 +88,21 @@ Solo se despliega la guía. El stack de Loki no puede correr en Vercel —son tr
 de larga duración con almacenamiento persistente, y Vercel ejecuta estáticos y funciones
 serverless efímeras.
 
-`vercel.json` apunta `outputDirectory` a `guia/`, así que al importar el repo en Vercel
-se publica la guía en la raíz del dominio sin más configuración.
+`guia/index.html` es un **fragmento** sin `<head>`: se publica como Artifact y la
+plataforma lo envuelve. Servido tal cual, el navegador lo abre en quirks mode y —al no
+haber `<meta name="viewport">`— el móvil lo compone a 980 px y luego reduce, que es lo que
+hace que se vea diminuto en el teléfono.
+
+Por eso `build-guia.py` genera `public/index.html`, ya envuelto en un documento completo
+con charset, viewport y metadatos. `vercel.json` apunta `outputDirectory` a `public/`, así
+que al importar el repo en Vercel se publica la guía en la raíz del dominio sin más
+configuración.
+
+Si editas `guia/index.html`, regenera antes de subir:
+
+```bash
+python3 build-guia.py
+```
 
 ## Versiones
 
