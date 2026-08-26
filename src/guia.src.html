@@ -1,22 +1,9 @@
-<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="Guía de campo para montar un stack Grafana + Loki + Promtail desde cero: configuración explicada término por término, varios proyectos en un mismo Loki y LogQL desde cero.">
-<meta name="color-scheme" content="light dark">
-<meta property="og:type" content="article">
-<meta property="og:title" content="Loki de Cero a Query">
-<meta property="og:description" content="Guía de campo para montar un stack Grafana + Loki + Promtail desde cero: configuración explicada término por término, varios proyectos en un mismo Loki y LogQL desde cero.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#129717;</text></svg>">
 <title>Loki de Cero a Query</title>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
 
 <style>
-
 :root{
   --ground:#F7F8FA;
   --surface:#FFFFFF;
@@ -368,8 +355,7 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
-</head>
-<body>
+
 <div class="layout">
 <aside class="rail">
   <div class="rail-brand">
@@ -1938,6 +1924,3 @@ curl -s -G localhost:3100/loki/api/v1/query_range \
 
 </main>
 </div>
-
-</body>
-</html>
