@@ -36,11 +36,11 @@ Grafana queda en **http://localhost:3000** (`admin` / `admin`).
 
 ## Qué hay dentro
 
-| Fichero | Para qué |
+| Archivo | Para qué |
 |---|---|
 | `docker-compose.yml` | Los tres servicios, con healthcheck en Loki |
 | `loki-config.yml` | Almacenamiento, esquema, límites de ingesta y consulta |
-| `promtail-config.yml` | Qué ficheros leer y cómo parsearlos |
+| `promtail-config.yml` | Qué archivos leer y cómo parsearlos |
 | `generate_logs.py` | Genera `logs/access.log` — nginx common log format |
 | `generate_transactions.py` | Genera `logs/transactions.log` — con `$request_time` |
 | `grafana/provisioning/` | Datasource y proveedor de dashboards |
@@ -79,9 +79,9 @@ las tres piezas del stack, cómo levantar el proyecto, la configuración de Loki
 término por término, el modelo de labels y streams, **cómo servir varios proyectos desde
 un mismo Loki**, **LogQL desde cero en ocho niveles**, el error de los timestamps, cómo
 medir latencia, **cómo llevar los logs de un WAF de Cloudflare a tus dashboards**, y una
-chuleta de diagnóstico.
+referencia rápida de diagnóstico.
 
-Es un único fichero HTML sin dependencias: se abre en el navegador tal cual.
+Es un único archivo HTML sin dependencias: se abre en el navegador tal cual.
 
 ## Despliegue en Vercel
 

@@ -387,7 +387,7 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
     <a href="#c7"><span class="n">07</span><span>El error que vas a ver</span></a>
     <a href="#c8"><span class="n">08</span><span>Medir latencia</span></a>
     <a href="#c9"><span class="n">09</span><span>WAF de Cloudflare</span></a>
-    <a href="#c10"><span class="n">10</span><span>Chuleta</span></a>
+    <a href="#c10"><span class="n">10</span><span>Referencia rápida</span></a>
   </nav>
 </aside>
 
@@ -396,7 +396,7 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
 <header class="hero">
   <p class="eyebrow">Grafana · Loki · Promtail · Docker Compose</p>
   <h1>Loki de Cero a Query</h1>
-  <p class="standfirst">Cómo montar un stack de logs desde un directorio vacío, qué significa cada línea de configuración, y cómo preguntarle cosas a tus logs una vez están dentro.</p>
+  <p class="standfirst">Cómo levantar un stack de logs desde un directorio vacío, qué significa cada línea de configuración, y cómo preguntarle cosas a tus logs una vez están dentro.</p>
   <div class="hero-meta">
     <span>Loki 2.9.0</span><span>Promtail 2.9.0</span><span>Grafana 10.0.0</span><span>Sin conocimientos previos</span>
   </div>
@@ -415,7 +415,7 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
 <div class="anat">
   <div class="anat-row">
     <div class="lab">Promtail</div>
-    <div class="txt">El <strong>agente</strong>. Vive donde están los ficheros de log. Los lee línea a línea, les saca metadatos, y los envía a Loki por HTTP. No almacena nada. Es el equivalente a Filebeat o Fluent Bit.</div>
+    <div class="txt">El <strong>agente</strong>. Vive donde están los archivos de log. Los lee línea a línea, les saca metadatos, y los envía a Loki por HTTP. No almacena nada. Es el equivalente a Filebeat o Fluent Bit.</div>
   </div>
   <div class="anat-row">
     <div class="lab">Loki</div>
@@ -429,7 +429,7 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
 
 <figure>
 <div class="fig-frame">
-<svg viewBox="0 0 900 250" role="img" aria-label="Los logs se escriben en un fichero, Promtail lo lee y los envía a Loki por HTTP POST, Loki los guarda en disco, y Grafana los consulta por HTTP GET.">
+<svg viewBox="0 0 900 250" role="img" aria-label="Los logs se escriben en un archivo, Promtail lo lee y los envía a Loki por HTTP POST, Loki los guarda en disco, y Grafana los consulta por HTTP GET.">
   <defs>
     <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
@@ -442,10 +442,10 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
     </marker>
   </defs>
 
-  <!-- fichero -->
+  <!-- archivo -->
   <rect x="14" y="78" width="132" height="66" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
   <text x="80" y="104" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="13.5" font-weight="500" fill="currentColor">access.log</text>
-  <text x="80" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".6">fichero en disco</text>
+  <text x="80" y="122" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11.5" fill="currentColor" opacity=".6">archivo en disco</text>
 
   <!-- promtail -->
   <rect x="228" y="78" width="132" height="66" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
@@ -536,14 +536,14 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
 docker compose version</code></pre>
 </div>
 
-<p>Todo el proyecto son cinco ficheros. Esta es la estructura final, para que sepas hacia dónde vas:</p>
+<p>Todo el proyecto son cinco archivos. Esta es la estructura final, para que sepas hacia dónde vas:</p>
 
 <div class="code">
 <div class="code-bar"><span class="tag">árbol</span><span>estructura del proyecto</span></div>
 <pre><code>grafana-loki-demo/
 ├── docker-compose.yml           <span class="c"># orquesta los 3 servicios</span>
 ├── loki-config.yml              <span class="c"># cómo almacena y valida Loki</span>
-├── promtail-config.yml          <span class="c"># qué ficheros leer y cómo parsearlos</span>
+├── promtail-config.yml          <span class="c"># qué archivos leer y cómo parsearlos</span>
 ├── logs/
 │   └── access.log               <span class="c"># los logs que quieres ingerir</span>
 └── grafana/
@@ -576,7 +576,7 @@ docker compose version</code></pre>
 <div class="anat">
   <div class="anat-row"><div class="lab">image</div><div class="txt">Fija la versión. <code>:latest</code> te romperá el proyecto un martes cualquiera cuando cambie el formato de configuración entre versiones mayores.</div></div>
   <div class="anat-row"><div class="lab">ports</div><div class="txt"><code>"3100:3100"</code> expone el puerto del contenedor en tu máquina. Solo lo necesitas para hacer <code>curl</code> desde el host: Grafana habla con Loki por la red interna, no por aquí.</div></div>
-  <div class="anat-row"><div class="lab">volumes</div><div class="txt">El primero es un <em>bind mount</em>: mete tu fichero de configuración dentro del contenedor. El segundo es un <em>volumen con nombre</em>: hace que los datos sobrevivan a un <code>docker compose down</code>.</div></div>
+  <div class="anat-row"><div class="lab">volumes</div><div class="txt">El primero es un <em>bind mount</em>: coloca tu archivo de configuración dentro del contenedor. El segundo es un <em>volumen con nombre</em>: hace que los datos sobrevivan a un <code>docker compose down</code>.</div></div>
   <div class="anat-row"><div class="lab">command</div><div class="txt">Sobrescribe el arranque por defecto de la imagen para apuntar a tu configuración. Si la ruta no coincide con la del volumen, Loki arranca con valores por defecto y no te avisa de forma obvia.</div></div>
   <div class="anat-row"><div class="lab">healthcheck</div><div class="txt">Sondea <code>/ready</code>. Sin esto no puedes usar <code>condition: service_healthy</code>, y Promtail arrancará antes que Loki para estrellarse contra un puerto cerrado.</div></div>
 </div>
@@ -620,7 +620,7 @@ docker compose version</code></pre>
 </div>
 
 <h3>Conectar Grafana con Loki sin tocar la interfaz</h3>
-<p>Puedes añadir el origen de datos a mano desde el navegador, pero se pierde al recrear el contenedor. El <em>provisioning</em> lo declara en un fichero:</p>
+<p>Puedes añadir el origen de datos a mano desde el navegador, pero se pierde al recrear el contenedor. El <em>provisioning</em> lo declara en un archivo:</p>
 
 <div class="code">
 <div class="code-bar"><span class="tag">grafana/provisioning/datasources/loki.yml</span><span></span></div>
@@ -769,14 +769,14 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 </div>
 
 <div class="anat">
-  <div class="anat-row"><div class="lab">auth_enabled</div><div class="txt">Con <code>false</code>, Loki mete todo en un inquilino ficticio llamado <code>fake</code>. Con <code>true</code>, cada petición debe traer la cabecera <code>X-Scope-OrgID</code> o falla. Para una demo local siempre <code>false</code>.</div></div>
+  <div class="anat-row"><div class="lab">auth_enabled</div><div class="txt">Con <code>false</code>, Loki coloca todo en un inquilino ficticio llamado <code>fake</code>. Con <code>true</code>, cada petición debe traer la cabecera <code>X-Scope-OrgID</code> o falla. Para una demo local siempre <code>false</code>.</div></div>
   <div class="anat-row"><div class="lab">replication_factor</div><div class="txt">Cuántas copias de cada línea se guardan en el anillo. En un solo nodo tiene que ser <code>1</code>; cualquier otro valor deja a Loki esperando réplicas que no existen.</div></div>
-  <div class="anat-row"><div class="lab">ring / kvstore</div><div class="txt">El <em>anillo</em> es cómo se reparten el trabajo varios Lokis. Con <code>inmemory</code> le dices «soy el único, no busques compañeros». En producción real esto sería Consul o etcd.</div></div>
+  <div class="anat-row"><div class="lab">ring / kvstore</div><div class="txt">El <em>anillo</em> es cómo se reparten el trabajo varios Lokis. Con <code>inmemory</code> le dices “soy el único, no busques compañeros”. En producción real esto sería Consul o etcd.</div></div>
   <div class="anat-row"><div class="lab">schema_config</div><div class="txt">El formato del índice. <code>tsdb</code> + <code>v13</code> es el moderno y el que debes usar. El campo <code>from</code> es una fecha de inicio de vigencia: para cambiar de esquema se añade una entrada nueva con fecha futura, nunca se edita la existente.</div></div>
   <div class="anat-row"><div class="lab">period: 24h</div><div class="txt">El índice se parte en tablas de un día. No lo toques.</div></div>
 </div>
 
-<h3>limits_config — los frenos que te van a morder</h3>
+<h3>limits_config — los límites que te van a frenar</h3>
 <p>Este bloque es donde vive casi todo lo que hace que Loki rechace tus datos. Los valores por defecto están pensados para logs que llegan <em>en tiempo real</em>, no para cargar un histórico.</p>
 
 <div class="code">
@@ -846,7 +846,7 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 </div>
 
 <div class="wrap">
-<p>Promtail tiene tres responsabilidades: saber <em>qué</em> ficheros leer, recordar <em>por dónde iba</em>, y decidir <em>qué etiquetas</em> lleva cada línea.</p>
+<p>Promtail tiene tres responsabilidades: saber <em>qué</em> archivos leer, recordar <em>por dónde iba</em>, y decidir <em>qué etiquetas</em> lleva cada línea.</p>
 
 <div class="code">
 <div class="code-bar"><span class="tag">promtail-config.yml</span><span>estructura completa</span></div>
@@ -855,7 +855,7 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
   <span class="k">grpc_listen_port:</span> <span class="v">0</span>          <span class="c"># 0 = desactivado, no lo necesitas</span>
 
 <span class="k">positions:</span>
-  <span class="k">filename:</span> <span class="v">/tmp/positions.yaml</span>  <span class="c"># memoria de por dónde iba cada fichero</span>
+  <span class="k">filename:</span> <span class="v">/tmp/positions.yaml</span>  <span class="c"># memoria de por dónde iba cada archivo</span>
 
 <span class="k">clients:</span>
   - <span class="k">url:</span> <span class="v">http://loki:3100/loki/api/v1/push</span>
@@ -871,7 +871,7 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
     <span class="k">static_configs:</span>
       - <span class="k">targets:</span> [<span class="v">localhost</span>]
         <span class="k">labels:</span>
-<span class="hl">          <span class="k">job:</span> <span class="v">nginx_access</span>          <span class="c"># etiqueta fija para todo el fichero</span>
+<span class="hl">          <span class="k">job:</span> <span class="v">nginx_access</span>          <span class="c"># etiqueta fija para todo el archivo</span>
           <span class="k">__path__:</span> <span class="v">/var/log/app-logs/access.log</span></span>
 
     <span class="k">pipeline_stages:</span>
@@ -887,8 +887,8 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 <h3>Las cuatro claves que importan</h3>
 
 <div class="anat">
-  <div class="anat-row"><div class="lab">positions</div><div class="txt">Un YAML con el offset en bytes de cada fichero. Si Loki rechaza un lote, Promtail reintenta, se rinde y <strong>avanza igualmente</strong>: esas líneas se pierden. Para reprocesar un fichero desde cero hay que borrar este fichero y reiniciar.</div></div>
-  <div class="anat-row"><div class="lab">__path__</div><div class="txt">Los guiones bajos dobles marcan una etiqueta interna: se usa y se descarta, no llega a Loki. Acepta comodines, pero <strong>evítalos si tienes ficheros con formatos distintos</strong>: un <code>*.log</code> se traga todo y le aplica el parseo equivocado.</div></div>
+  <div class="anat-row"><div class="lab">positions</div><div class="txt">Un YAML con el offset en bytes de cada archivo. Si Loki rechaza un lote, Promtail reintenta, se rinde y <strong>avanza igualmente</strong>: esas líneas se pierden. Para reprocesar un archivo desde cero hay que borrar este archivo y reiniciar.</div></div>
+  <div class="anat-row"><div class="lab">__path__</div><div class="txt">Los guiones bajos dobles marcan una etiqueta interna: se usa y se descarta, no llega a Loki. Acepta comodines, pero <strong>evítalos si tienes archivos con formatos distintos</strong>: un <code>*.log</code> se traga todo y le aplica el parseo equivocado.</div></div>
   <div class="anat-row"><div class="lab">stage regex</div><div class="txt">Extrae campos con nombre. Sintaxis Go: <code>(?P&lt;nombre&gt;…)</code>. Lo extraído vive solo durante el pipeline; no se convierte en etiqueta por sí solo.</div></div>
   <div class="anat-row"><div class="lab">stage timestamp</div><div class="txt">Le dice a Loki que use la fecha <em>de dentro</em> del log, no la hora de lectura. Sin esta etapa, un log de julio se guarda con la marca de hoy.</div></div>
   <div class="anat-row"><div class="lab">stage labels</div><div class="txt">Promociona un campo extraído a etiqueta indexada. <strong>Aquí es donde se hace daño.</strong> Ver capítulo siguiente.</div></div>
@@ -911,7 +911,7 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 <div class="wrap">
 <p class="lead">Este es el concepto central de Loki. Si solo te llevas una cosa de la guía, que sea esta.</p>
 
-<p>Un <strong>stream</strong> es el conjunto de líneas que comparten exactamente la misma combinación de etiquetas. Loki no guarda «logs»: guarda streams, y cada stream tiene sus propios bloques, su propio índice y su propio límite de velocidad.</p>
+<p>Un <strong>stream</strong> es el conjunto de líneas que comparten exactamente la misma combinación de etiquetas. Loki no guarda “logs”: guarda streams, y cada stream tiene sus propios bloques, su propio índice y su propio límite de velocidad.</p>
 
 <figure>
 <div class="fig-frame">
@@ -1047,7 +1047,7 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 </div>
 
 <div class="wrap">
-<p class="lead">La pregunta llega en cuanto el stack funciona: tengo cinco proyectos, ¿levanto cinco Lokis? No. Un solo Loki aloja todos, y lo que los separa son las etiquetas. Pero hay tres formas de organizarlo y elegir mal se paga caro.</p>
+<p class="lead">La pregunta llega en cuanto el stack funciona: tengo cinco proyectos, ¿levanto cinco Lokis? No. Un solo Loki aloja todos, y lo que los separa son las etiquetas. Pero hay tres formas de organizarlo y elegir mal sale caro.</p>
 
 <figure>
 <div class="fig-frame">
@@ -1157,9 +1157,9 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 </div>
 
 <h3>B · Un glob y el nombre del proyecto sacado de la ruta</h3>
-<p>Cuando todos los proyectos comparten estructura, no hace falta un bloque por cada uno. Se recorre con un comodín y se deduce la etiqueta de la propia ruta del fichero.</p>
+<p>Cuando todos los proyectos comparten estructura, no hace falta un bloque por cada uno. Se recorre con un comodín y se deduce la etiqueta de la propia ruta del archivo.</p>
 
-<p>La clave es que <strong>Promtail añade automáticamente una etiqueta <code>filename</code></strong> con la ruta completa de cada fichero. El stage <code>regex</code> puede leerla con <code>source</code> en vez de leer el contenido de la línea.</p>
+<p>La clave es que <strong>Promtail añade automáticamente una etiqueta <code>filename</code></strong> con la ruta completa de cada archivo. El stage <code>regex</code> puede leerla con <code>source</code> en vez de leer el contenido de la línea.</p>
 
 <div class="code">
 <div class="code-bar"><span class="tag">promtail-config.yml</span><span>relabeling desde la ruta</span></div>
@@ -1257,15 +1257,15 @@ sum by (project) (rate({job="proyectos", status=~"5.."}[5m]))</code></pre>
 <span class="note-label">Necesitas Promtail 3.x</span>
 <p>Promtail 2.9 habla la versión 1.42 de la API de Docker. Los demonios de Docker recientes exigen 1.44 como mínimo y responden:</p>
 <p><code>client version 1.42 is too old. Minimum supported API version is 1.44</code></p>
-<p>Con <code>grafana/promtail:3.2.1</code> o superior funciona sin tocar nada más. Si necesitas quedarte en 2.9, la alternativa es leer los ficheros directamente —<code>/var/lib/docker/containers/*/*-json.log</code>— y sacar el identificador del contenedor de la ruta, como en la opción B.</p>
+<p>Con <code>grafana/promtail:3.2.1</code> o superior funciona sin tocar nada más. Si necesitas quedarte en 2.9, la alternativa es leer los archivos directamente —<code>/var/lib/docker/containers/*/*-json.log</code>— y sacar el identificador del contenedor de la ruta, como en la opción B.</p>
 </div>
 
-<h3>Otras fuentes que no son ficheros</h3>
+<h3>Otras fuentes que no son archivos</h3>
 <div class="anat">
   <div class="anat-row"><div class="lab">syslog</div><div class="txt">Promtail escucha en un puerto y recibe syslog por red: <code>syslog: { listen_address: 0.0.0.0:1514 }</code>. Útil para equipos de red y máquinas donde no puedes instalar nada.</div></div>
   <div class="anat-row"><div class="lab">journal</div><div class="txt"><code>journal: { path: /var/log/journal }</code> lee el diario de systemd. Requiere montar el directorio y suele necesitar <code>max_age</code> para no releer meses de histórico al arrancar.</div></div>
   <div class="anat-row"><div class="lab">kubernetes_sd</div><div class="txt">El equivalente a <code>docker_sd</code> para clústeres: descubre pods y trae namespace, pod y contenedor como etiquetas. Es el modo estándar en Kubernetes.</div></div>
-  <div class="anat-row"><div class="lab">Push directo</div><div class="txt">Cualquier aplicación puede escribir a <code>/loki/api/v1/push</code> sin Promtail de por medio. Útil para trabajos por lotes que no dejan fichero.</div></div>
+  <div class="anat-row"><div class="lab">Push directo</div><div class="txt">Cualquier aplicación puede escribir a <code>/loki/api/v1/push</code> sin Promtail de por medio. Útil para trabajos por lotes que no dejan archivo.</div></div>
 </div>
 
 <h3>C · Inquilinos separados, cuando hace falta aislamiento de verdad</h3>
@@ -1341,7 +1341,7 @@ sum by (project) (rate({job="proyectos", status=~"5.."}[5m]))</code></pre>
 <div class="anat">
   <div class="anat-row"><div class="lab">Carpetas</div><div class="txt">El <code>folder</code> del proveedor de dashboards agrupa por equipo. Puedes declarar varios proveedores apuntando a subdirectorios distintos, cada uno con su carpeta.</div></div>
   <div class="anat-row"><div class="lab">Un dashboard, no diez</div><div class="txt">Con la variable <code>$project</code>, un único dashboard cubre todos los proyectos. Diez copias del mismo JSON son diez sitios donde arreglar el mismo fallo.</div></div>
-  <div class="anat-row"><div class="lab">Enlaces</div><div class="txt">Los <em>data links</em> de un panel pueden llevar al dashboard de detalle del proyecto pinchado, pasando <code>var-project=${__field.labels.project}</code>.</div></div>
+  <div class="anat-row"><div class="lab">Enlaces</div><div class="txt">Los <em>data links</em> de un panel pueden llevar al dashboard de detalle del proyecto seleccionado, pasando <code>var-project=${__field.labels.project}</code>.</div></div>
 </div>
 
 <h3>El presupuesto de cardinalidad se multiplica</h3>
@@ -1624,7 +1624,7 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
 <section class="chapter" id="c7">
 <div class="chapter-head">
   <div class="chapter-num">Capítulo 07</div>
-  <h2>El error que vas a ver: «entry too far behind»</h2>
+  <h2>El error que vas a ver: “entry too far behind”</h2>
 </div>
 
 <div class="wrap">
@@ -1642,11 +1642,11 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
 <h3>Por qué <code>reject_old_samples: false</code> no lo arregla</h3>
 <p>Porque ese ajuste desactiva el <strong>control nº 1</strong> del diagrama del capítulo 02, el del <em>distributor</em>. Este error viene del <strong>control nº 2</strong>, el del <em>ingester</em>, que es otro código y otro parámetro.</p>
 
-<p>Con <code>unordered_writes</code> activo —lo está por defecto—, el ingester acepta líneas desordenadas solo dentro de una ventana hacia atrás igual a <code>max_chunk_age / 2</code>, medida <strong>desde la línea más reciente que ya ha visto ese stream</strong>. Con el valor por defecto de <code>2h</code>, esa ventana es de <strong>una hora</strong>.</p>
+<p>Con <code>unordered_writes</code> activo —lo está por defecto—, el ingester acepta líneas desordenadas solo dentro de una ventana hacia atrás igual a <code>max_chunk_age / 2</code>, medida <strong>desde la línea más reciente que ya vio ese stream</strong>. Con el valor por defecto de <code>2h</code>, esa ventana es de <strong>una hora</strong>.</p>
 
 <figure>
 <div class="fig-frame">
-<svg viewBox="0 0 900 340" role="img" aria-label="Con el fichero desordenado, la primera línea reciente fija la cabeza del stream y todo lo anterior a una hora queda rechazado. Con el fichero ordenado cronológicamente cada línea avanza la cabeza y ninguna cae fuera de la ventana.">
+<svg viewBox="0 0 900 340" role="img" aria-label="Con el archivo desordenado, la primera línea reciente fija la cabeza del stream y todo lo anterior a una hora queda rechazado. Con el archivo ordenado cronológicamente cada línea avanza la cabeza y ninguna cae fuera de la ventana.">
   <defs>
     <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
@@ -1654,7 +1654,7 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
   </defs>
 
   <!-- CASO A -->
-  <text x="14" y="20" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--bad)">Fichero desordenado — lo que pasa</text>
+  <text x="14" y="20" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--bad)">Archivo desordenado — lo que pasa</text>
 
   <line x1="60" y1="86" x2="850" y2="86" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar3)"/>
   <text x="60" y="106" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".6">hace 30 días</text>
@@ -1676,7 +1676,7 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
   <text x="886" y="128" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">cabeza del stream</text>
   <line x1="820" y1="94" x2="820" y2="116" stroke="currentColor" stroke-width="1" stroke-dasharray="2 2"/>
 
-  <!-- lineas del fichero -->
+  <!-- lineas del archivo -->
   <g font-family="JetBrains Mono, monospace" font-size="10.5">
     <circle cx="820" cy="66" r="3.5" fill="var(--good)"/>
     <circle cx="180" cy="66" r="3.5" fill="var(--bad)"/>
@@ -1685,13 +1685,13 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
     <circle cx="660" cy="66" r="3.5" fill="var(--bad)"/>
     <circle cx="420" cy="66" r="3.5" fill="var(--bad)"/>
   </g>
-  <text x="14" y="152" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".8">La 1ª línea que llega es de «casi ahora» → fija la cabeza al extremo derecho.</text>
+  <text x="14" y="152" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".8">La 1ª línea que llega es de “casi ahora” → fija la cabeza al extremo derecho.</text>
   <text x="14" y="168" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".8">Todas las demás llegan por detrás del corte y se descartan una a una.</text>
 
   <line x1="14" y1="188" x2="886" y2="188" stroke="currentColor" stroke-width="1" opacity=".15"/>
 
   <!-- CASO B -->
-  <text x="14" y="216" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--good)">Fichero ordenado cronológicamente — la solución de fondo</text>
+  <text x="14" y="216" font-family="Archivo, sans-serif" font-size="14.5" font-weight="600" fill="var(--good)">Archivo ordenado cronológicamente — la solución de fondo</text>
 
   <line x1="60" y1="280" x2="850" y2="280" stroke="currentColor" stroke-width="1.5" marker-end="url(#ar3)"/>
   <rect x="60" y="248" width="760" height="26" fill="var(--good)" opacity=".16"/>
@@ -1707,8 +1707,8 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
     <circle cx="810" cy="261" r="3.5" fill="var(--good)"/>
   </g>
   <path d="M 110 292 L 810 292" stroke="var(--good)" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#ar3)"/>
-  <text x="440" y="308" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--good)">cada línea avanza la cabeza: nunca hay nada «por detrás»</text>
-  <text x="14" y="330" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".75">Ordenar el fichero antes de ingerirlo hace innecesario tocar max_chunk_age.</text>
+  <text x="440" y="308" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--good)">cada línea avanza la cabeza: nunca hay nada “por detrás”</text>
+  <text x="14" y="330" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".75">Ordenar el archivo antes de ingerirlo hace innecesario tocar max_chunk_age.</text>
 </svg>
 </div>
 <figcaption>El corte es relativo a la línea más nueva del stream, no a la hora actual. Por eso el mensaje de error repite siempre la misma fecha por muchas veces que reintentes.</figcaption>
@@ -1717,7 +1717,7 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
 <h3>Las dos soluciones</h3>
 
 <div class="anat">
-  <div class="anat-row"><div class="lab">De fondo</div><div class="txt"><strong>Ordena el fichero por fecha antes de ingerirlo.</strong> Si las líneas llegan en orden, cada una avanza la cabeza del stream y ninguna cae por detrás del corte. No hay nada que configurar.</div></div>
+  <div class="anat-row"><div class="lab">De fondo</div><div class="txt"><strong>Ordena el archivo por fecha antes de ingerirlo.</strong> Si las líneas llegan en orden, cada una avanza la cabeza del stream y ninguna cae por detrás del corte. No hay nada que configurar.</div></div>
   <div class="anat-row"><div class="lab">De emergencia</div><div class="txt">Si no puedes ordenar el origen, <strong>ensancha la ventana</strong>. Recuerda que la tolerancia es la <em>mitad</em> de <code>max_chunk_age</code>: para cubrir 30 días de histórico necesitas al menos 1440 h, y conviene un margen.</div></div>
 </div>
 
@@ -1733,7 +1733,7 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
 
 <div class="note warn">
 <span class="note-label">Después de arreglarlo, hay que rebobinar</span>
-<p>Promtail reintenta un lote rechazado, se rinde y <strong>avanza la posición igualmente</strong>. Cambiar la configuración de Loki no recupera las líneas perdidas: hay que borrar el fichero de posiciones y reiniciar. Como lo escribe <code>root</code> dentro del contenedor, lo más cómodo es borrarlo desde otro contenedor:</p>
+<p>Promtail reintenta un lote rechazado, se rinde y <strong>avanza la posición igualmente</strong>. Cambiar la configuración de Loki no recupera las líneas perdidas: hay que borrar el archivo de posiciones y reiniciar. Como lo escribe <code>root</code> dentro del contenedor, lo más cómodo es borrarlo desde otro contenedor:</p>
 <div class="code" style="margin:.9rem 0 0">
 <pre><code>docker compose down
 docker run --rm -v "$PWD/promtail-data:/d" alpine:3 rm -f /d/positions.yaml
@@ -1741,7 +1741,7 @@ docker compose up -d</code></pre>
 </div>
 </div>
 
-<h3>Comprobar que ha funcionado</h3>
+<h3>Comprobar que funcionó</h3>
 <div class="code">
 <div class="code-bar"><span class="tag">terminal</span><span>verificación</span></div>
 <pre><code><span class="c"># ¿queda algún rechazo?</span>
@@ -1757,7 +1757,7 @@ curl -s http://localhost:3100/loki/api/v1/labels</code></pre>
 
 <div class="note tip">
 <span class="note-label">Otra trampa de la misma familia</span>
-<p>Un <code>__path__</code> con comodín (<code>*.log</code>) se traga cualquier fichero nuevo del directorio y le aplica el parseo del primer trabajo que coincida. Si añades un fichero con otro formato, se ingiere con las etiquetas equivocadas y no te enteras hasta que una consulta devuelve nada. Usa rutas explícitas cuando convivan formatos distintos.</p>
+<p>Un <code>__path__</code> con comodín (<code>*.log</code>) se traga cualquier archivo nuevo del directorio y le aplica el parseo del primer trabajo que coincida. Si añades un archivo con otro formato, se ingiere con las etiquetas equivocadas y no te enteras hasta que una consulta devuelve nada. Usa rutas explícitas cuando convivan formatos distintos.</p>
 </div>
 </div>
 </section>
@@ -1873,7 +1873,7 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 </div>
 
 <div class="wrap">
-<p class="lead">Hasta aquí los logs venían de ficheros en tu disco. Un WAF es distinto: los logs los tiene un tercero, en su nube, y hay que ir a buscarlos. Cómo se hace depende de tu plan de Cloudflare, y esa es la primera decisión.</p>
+<p class="lead">Hasta aquí los logs venían de archivos en tu disco. Un WAF es distinto: los logs los tiene un tercero, en su nube, y hay que ir a buscarlos. Cómo se hace depende de tu plan de Cloudflare, y esa es la primera decisión.</p>
 
 <h3>Qué es un WAF y qué escribe en sus logs</h3>
 <p>Un <strong>WAF</strong> (Web Application Firewall) se sienta delante de tu servidor e inspecciona cada petición antes de dejarla pasar. Cuando una coincide con una regla —una inyección SQL, un escaneo de rutas conocidas, un país bloqueado— la marca y actúa.</p>
@@ -1885,8 +1885,8 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
   <div class="anat-row"><div class="lab">dataset</div><div class="txt">Cloudflare separa sus logs en conjuntos: <code>http_requests</code> (todas las peticiones), <code>firewall_events</code> (solo lo que tocó una regla), y otros. <strong>Cuál puedes leer depende del método</strong>, y eso condiciona todo lo demás.</div></div>
 </div>
 
-<h3>Las tres vías, y cuál te toca</h3>
-<p>No hay una sola forma de sacar estos logos de Cloudflare, y la que elijas viene impuesta sobre todo por el plan que tengas contratado.</p>
+<h3>Las tres vías, y cuál te corresponde</h3>
+<p>No hay una sola forma de sacar estos logs de Cloudflare, y la que elijas viene impuesta sobre todo por el plan que tengas contratado.</p>
 
 <figure>
 <div class="fig-frame">
@@ -1947,11 +1947,11 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 <div class="note warn">
 <span class="note-label">Antes de seguir · qué NO es tiempo real</span>
 <p>Las vías A y B leen registros que Cloudflare consolida por lotes. <strong>El retraso es de minutos y no se puede reducir con configuración</strong>, por mucho que bajes el intervalo de sondeo: si pides datos más recientes que la ventana disponible, Cloudflare devuelve vacío.</p>
-<p>Si necesitas ver un ataque mientras ocurre, la vía C es la única. Si te vale mirar cinco minutos atrás —que para la mayoría de paneles es suficiente— A es mucho más simple de operar.</p>
+<p>Si necesitas ver un ataque mientras ocurre, la vía C es la única. Si te basta con mirar cinco minutos atrás —que para la mayoría de paneles es suficiente— A es mucho más simple de operar.</p>
 </div>
 
 <h3>Vía A · El scrape config nativo de Promtail</h3>
-<p>Promtail trae soporte de Cloudflare de fábrica: no hace falta ningún agente extra. Este bloque está <strong>verificado contra Promtail 2.9</strong>; su validador rechaza cualquier campo que no exista, así que estos son exactamente los que acepta.</p>
+<p>Promtail trae soporte de Cloudflare de forma nativa: no hace falta ningún agente extra. Este bloque está <strong>verificado contra Promtail 2.9</strong>; su validador rechaza cualquier campo que no exista, así que estos son exactamente los que acepta.</p>
 
 <div class="code">
 <div class="code-bar"><span class="tag">promtail-config.yml</span><span>scrape de cloudflare</span></div>
@@ -1961,7 +1961,7 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 <span class="hl">      <span class="k">api_token:</span> <span class="v">${CF_API_TOKEN}</span>     <span class="c"># token con permiso Logs:Read</span>
       <span class="k">zone_id:</span> <span class="v">${CF_ZONE_ID}</span>        <span class="c"># una zona = un dominio</span></span>
       <span class="k">fields_type:</span> <span class="v">extended</span>       <span class="c"># default | minimal | extended | all</span>
-      <span class="k">pull_range:</span> <span class="v">5m</span>              <span class="c"># cuánto pide en cada tirón</span>
+      <span class="k">pull_range:</span> <span class="v">5m</span>              <span class="c"># cuánto pide en cada consulta</span>
       <span class="k">workers:</span> <span class="v">3</span>                  <span class="c"># descargas en paralelo</span>
       <span class="k">labels:</span>
         <span class="k">job:</span> <span class="v">cloudflare_waf</span>
@@ -1973,10 +1973,10 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 <table>
 <thead><tr><th>Campo</th><th>Qué hace</th><th>Cuidado</th></tr></thead>
 <tbody>
-<tr><td><code>api_token</code></td><td class="d">Token de Cloudflare con permiso <em>Logs: Read</em> sobre la zona.</td><td class="d">Token, <strong>no</strong> la Global API Key. Nunca en el fichero: por variable de entorno.</td></tr>
+<tr><td><code>api_token</code></td><td class="d">Token de Cloudflare con permiso <em>Logs: Read</em> sobre la zona.</td><td class="d">Token, <strong>no</strong> la Global API Key. Nunca en el archivo: por variable de entorno.</td></tr>
 <tr><td><code>zone_id</code></td><td class="d">Identifica el dominio. Está en el panel de Cloudflare, en Overview.</td><td class="d">Cambia por dominio <em>y</em> por entorno. Es el valor que más se equivoca al promocionar de staging a producción.</td></tr>
 <tr><td><code>fields_type</code></td><td class="d">Cuántos campos trae cada registro.</td><td class="d"><code>default</code> no incluye los campos de WAF. Para ver acciones y reglas necesitas <code>extended</code> o <code>all</code>.</td></tr>
-<tr><td><code>pull_range</code></td><td class="d">Tamaño de la ventana que descarga en cada iteración.</td><td class="d">Muy corto y pides datos que Cloudflare aún no ha consolidado: vendrán vacíos.</td></tr>
+<tr><td><code>pull_range</code></td><td class="d">Tamaño de la ventana que descarga en cada iteración.</td><td class="d">Muy corto y pides datos que Cloudflare aún no consolida: vendrán vacíos.</td></tr>
 <tr><td><code>workers</code></td><td class="d">Descargas simultáneas.</td><td class="d">Subirlo acelera el arranque en zonas con mucho tráfico; también multiplica el consumo de memoria.</td></tr>
 <tr><td><code>labels</code></td><td class="d">Etiquetas fijas para todo lo que entre por aquí.</td><td class="d">Aquí es donde pones <code>env</code> y <code>zone</code> para poder separar entornos.</td></tr>
 </tbody>
@@ -1984,7 +1984,7 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 </div>
 
 <div class="note key">
-<span class="note-label">El detalle que descoloca a todo el mundo</span>
+<span class="note-label">El detalle que confunde a todos</span>
 <p>Este scrape config <strong>no tiene campo <code>dataset</code></strong>. Lo comprobé: Promtail 2.9 rechaza <code>dataset</code>, <code>account_id</code>, <code>endpoint</code> y <code>additional_fields</code> como campos inexistentes. Solo acepta los seis de la tabla.</p>
 <p>Eso significa que <strong>no lee <code>firewall_events</code></strong>: lee <code>http_requests</code>, donde la información del WAF viene como campos dentro de cada petición (<code>WAFAction</code>, <code>WAFRuleID</code>, <code>SecurityLevel</code>…). Por eso <code>fields_type</code> importa tanto: con <code>default</code> esos campos sencillamente no vienen, y te quedas mirando un panel vacío sin entender por qué.</p>
 </div>
@@ -2016,7 +2016,7 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
           job:    <span class="s">"cloudflare_waf"</span>,
           zone:   env.ZONE,          <span class="c">// midominio.com</span>
           env:    env.ENVIRONMENT,   <span class="c">// prod | staging</span>
-          action: evento.WAFAction,  <span class="c">// pocos valores: vale como etiqueta</span>
+          action: evento.WAFAction,  <span class="c">// pocos valores: sirve como etiqueta</span>
         },
         values: [[ <span class="s">`${Date.now()}000000`</span>, JSON.stringify(evento) ]],
       }],
@@ -2098,11 +2098,11 @@ sum(rate({job="cloudflare_waf"}[$__interval]))
 
 <div class="note tip">
 <span class="note-label">Ajusta el refresco a la vía que uses</span>
-<p>Con la vía C (Worker) un refresco de <code>10s</code> tiene sentido: los datos llegan en segundos. Con las vías A o B, refrescar cada 10 s solo sirve para machacar a Loki con consultas que devuelven lo mismo, porque los datos nuevos tardan minutos. Ahí pon <code>1m</code> y una ventana de <code>now-1h</code>.</p>
+<p>Con la vía C (Worker) un refresco de <code>10s</code> tiene sentido: los datos llegan en segundos. Con las vías A o B, refrescar cada 10 s solo sirve para saturar a Loki con consultas que devuelven lo mismo, porque los datos nuevos tardan minutos. Ahí pon <code>1m</code> y una ventana de <code>now-1h</code>.</p>
 </div>
 
 <h3>Qué cambia entre entornos</h3>
-<p>Esta es la parte que rompe los despliegues. Nada de esto debería estar escrito a mano dentro de un fichero versionado.</p>
+<p>Esta es la parte que rompe los despliegues. Nada de esto debería estar escrito a mano dentro de un archivo versionado.</p>
 
 <div class="tbl">
 <table>
@@ -2128,7 +2128,7 @@ sum(rate({job="cloudflare_waf"}[$__interval]))
 <div class="note key">
 <span class="note-label">Qué está verificado en este capítulo y qué no</span>
 <p>El esquema del scrape config de Cloudflare está comprobado contra Promtail 2.9: sus seis campos válidos y el rechazo de <code>dataset</code>, <code>account_id</code>, <code>endpoint</code> y <code>additional_fields</code> salen de ejecutar su validador. El envío por HTTP y las consultas LogQL están probados de extremo a extremo contra un Loki real.</p>
-<p>Lo que <strong>no</strong> se ha probado aquí contra una cuenta real de Cloudflare es el tirón de la Logpull API, que exige plan Enterprise. Los valores de latencia son los órdenes de magnitud documentados por Cloudflare, no medidas propias: contrástalos con tu zona antes de prometerle a nadie un panel «en vivo».</p>
+<p>Lo que <strong>no</strong> se probó aquí contra una cuenta real de Cloudflare es la descarga desde la Logpull API, que exige plan Enterprise. Los valores de latencia son los órdenes de magnitud documentados por Cloudflare, no medidas propias: contrástalos con tu zona antes de prometerle a nadie un panel “en vivo”.</p>
 </div>
 </div>
 </section>
@@ -2137,7 +2137,7 @@ sum(rate({job="cloudflare_waf"}[$__interval]))
 <section class="chapter" id="c10">
 <div class="chapter-head">
   <div class="chapter-num">Capítulo 10</div>
-  <h2>Chuleta</h2>
+  <h2>Referencia rápida</h2>
 </div>
 
 <div class="wrap">
@@ -2152,7 +2152,7 @@ sum(rate({job="cloudflare_waf"}[$__interval]))
 <tr><td class="d" data-label="Síntoma"><code>per stream rate limit</code></td><td class="d" data-label="Dónde mirar"><code>per_stream_rate_limit</code>. Todos tus logs caen en un solo stream.</td></tr>
 <tr><td class="d" data-label="Síntoma"><code>maximum of series reached</code></td><td class="d" data-label="Dónde mirar">Cardinalidad. Tienes una etiqueta que no debería serlo. Capítulo 04.</td></tr>
 <tr><td class="d" data-label="Síntoma"><code>permission denied</code> al arrancar</td><td class="d" data-label="Dónde mirar">El volumen es de <code>root</code> y Loki corre como <code>10001</code>.</td></tr>
-<tr><td class="d" data-label="Síntoma">Promtail no relee un fichero</td><td class="d" data-label="Dónde mirar"><code>positions.yaml</code>. Bórralo y reinicia.</td></tr>
+<tr><td class="d" data-label="Síntoma">Promtail no relee un archivo</td><td class="d" data-label="Dónde mirar"><code>positions.yaml</code>. Bórralo y reinicia.</td></tr>
 <tr><td class="d" data-label="Síntoma">Un panel Stat da un número raro</td><td class="d" data-label="Dónde mirar">La consulta devuelve varias series. Falta <code>by()</code> o <code>| drop</code>.</td></tr>
 <tr><td class="d" data-label="Síntoma">Consulta lentísima</td><td class="d" data-label="Dónde mirar">Selector demasiado ancho, o un parser aplicado a millones de líneas innecesarias.</td></tr>
 <tr><td class="d" data-label="Síntoma">Un proyecto nuevo no aparece</td><td class="d" data-label="Dónde mirar">El glob de <code>__path__</code> no lo cubre, o falta el bind mount del directorio en el compose.</td></tr>
@@ -2193,7 +2193,7 @@ curl -s -G localhost:3100/loki/api/v1/query_range \
   <span class="chip">cardinalidad = nº de streams distintos</span>
   <span class="chip">unwrap = campo de texto → número</span>
   <span class="chip">positions.yaml = memoria de Promtail</span>
-  <span class="chip">provisioning = configurar Grafana por fichero</span>
+  <span class="chip">provisioning = configurar Grafana por archivo</span>
   <span class="chip">tenant = inquilino aislado de Loki</span>
   <span class="chip">relabeling = derivar etiquetas de la ruta o del entorno</span>
   <span class="chip">WAF = cortafuegos de aplicación web</span>
