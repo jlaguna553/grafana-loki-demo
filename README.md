@@ -74,7 +74,8 @@ id de transacción **no**: serían un stream por línea. Se extraen al consultar
 
 ## Guía
 
-La guía es un documento autocontenido con once capítulos y diez diagramas:
+La guía es un documento autocontenido con once capítulos, diez diagramas y nueve
+comparativas **local frente a producción**:
 las tres piezas del stack, cómo levantar el proyecto, la configuración de Loki y Promtail
 término por término, el modelo de labels y streams, **cómo servir varios proyectos desde
 un mismo Loki**, **LogQL desde cero en ocho niveles**, el error de los timestamps, cómo

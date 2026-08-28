@@ -228,6 +228,39 @@ figcaption{
   padding:1.5rem 1.35rem;overflow-x:auto;
 }
 
+/* ---------- comparativa local / producción ---------- */
+.envs{
+  width:min(1080px, calc(100vw - var(--rail) - 5rem));
+  max-width:none;
+  position:relative;left:50%;transform:translateX(-50%);
+  display:grid;grid-template-columns:1fr 1fr;gap:1rem;
+  margin:2rem 0 2.25rem;align-items:stretch;
+}
+.env{
+  border:1px solid var(--rule);border-radius:5px;overflow:hidden;
+  background:var(--surface);display:flex;flex-direction:column;min-width:0;
+}
+.env-head{
+  padding:.5rem .85rem;border-bottom:1px solid var(--rule);
+  font-family:var(--f-display);font-weight:600;font-size:.82rem;
+  display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;
+}
+.env-local .env-head{color:var(--steel);background:var(--steel-soft)}
+.env-prod  .env-head{color:var(--accent);background:var(--accent-soft)}
+.env-head .tag{
+  font-family:var(--f-mono);font-size:.63rem;letter-spacing:.1em;
+  text-transform:uppercase;opacity:.8;font-weight:400;
+}
+.env-body{padding:.8rem .9rem;font-size:.9rem;line-height:1.55}
+.env-body p{margin:0 0 .55rem}
+.env-body p:last-child{margin-bottom:0}
+.env-body ul{margin:0;padding-left:1.05rem}
+.env-body li{margin-bottom:.4rem;font-size:.88rem}
+.env-body li:last-child{margin-bottom:0}
+.env-body code{font-size:.82em;overflow-wrap:anywhere}
+.env .code{margin:auto 0 0;border-radius:0;border:none;border-top:1px solid var(--rule)}
+.env .code pre{font-size:.71rem;line-height:1.65}
+
 /* ---------- tables ---------- */
 .tbl{overflow-x:auto;margin:1.6rem 0 1.9rem;border:1px solid var(--rule);border-radius:5px;background:var(--surface)}
 table{border-collapse:collapse;width:100%;font-size:.86rem}
@@ -277,7 +310,7 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
   main{padding:0 1.5rem 5rem}
   .hero{padding:3rem 0 2rem}
   .anat-row{grid-template-columns:1fr;gap:.3rem}
-  figure{width:100%;left:auto;transform:none}
+  figure,.envs{width:100%;left:auto;transform:none}
 }
 
 /* ---- movil ---- */
@@ -347,6 +380,8 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
   .anat-row .lab{font-size:.7rem}
   .anat-row .txt{font-size:.88rem}
 
+  .envs{grid-template-columns:1fr;gap:.7rem}
+  .env-body{font-size:.87rem}
   .fig-frame{padding:1rem .8rem}
   figcaption{font-size:.7rem}
   .chip{font-size:.68rem}
@@ -619,6 +654,57 @@ docker compose version</code></pre>
 </div>
 </div>
 
+<h3>En producción esto no se parece</h3>
+<p>El <code>docker-compose.yml</code> de arriba está pensado para tu máquina. Lo que cambia al salir de ella:</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">este proyecto</span></div>
+    <div class="env-body">
+      <ul>
+        <li>La contraseña va escrita en el compose: <code>admin</code>.</li>
+        <li>El puerto <code>3100</code> se publica al host para poder hacer <code>curl</code>.</li>
+        <li>Los archivos de configuración se montan desde el repositorio.</li>
+        <li>Si un contenedor muere, se queda muerto.</li>
+      </ul>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">local</span><span></span></div><pre><code>  <span class="k">ports:</span>
+    - <span class="s">"3100:3100"</span>
+  <span class="k">environment:</span>
+    - <span class="v">GF_SECURITY_ADMIN_PASSWORD=admin</span>
+  <span class="k">volumes:</span>
+    - <span class="s">./loki-config.yml:/etc/loki/local-config.yaml</span></code></pre></div>
+  </div>
+
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">qué cambia</span></div>
+    <div class="env-body">
+      <ul>
+        <li>La contraseña sale de un secreto, nunca del archivo versionado.</li>
+        <li><strong>Loki no se publica al exterior.</strong> Solo Grafana lo alcanza por la red interna.</li>
+        <li>La configuración llega como ConfigMap o secreto del orquestador.</li>
+        <li><code>restart</code> y límites de recursos, para que un pico de logs no se coma el host.</li>
+      </ul>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code>  <span class="c"># sin 'ports': queda solo en la red interna</span>
+  <span class="k">expose:</span>
+    - <span class="s">"3100"</span>
+  <span class="k">environment:</span>
+    - <span class="v">GF_SECURITY_ADMIN_PASSWORD__FILE=/run/secrets/gf_admin</span>
+  <span class="k">secrets:</span>
+    - <span class="v">gf_admin</span>
+  <span class="k">restart:</span> <span class="v">unless-stopped</span>
+  <span class="k">deploy:</span>
+    <span class="k">resources:</span>
+      <span class="k">limits:</span> { <span class="k">memory:</span> <span class="v">2G</span> }</code></pre></div>
+  </div>
+</div>
+
+<div class="note warn">
+<span class="note-label">El error de seguridad más repetido</span>
+<p>Publicar el puerto <code>3100</code> de Loki en una máquina con IP pública. Loki <strong>no tiene autenticación propia</strong>: <code>auth_enabled</code> no es un login, solo decide si exige la cabecera de inquilino. Quien alcance ese puerto puede leer todos tus logs y escribir los que quiera. Loki va detrás de un proxy con TLS y autenticación, o no sale de la red interna.</p>
+</div>
+
 <h3>Conectar Grafana con Loki sin tocar la interfaz</h3>
 <p>Puedes añadir el origen de datos a mano desde el navegador, pero se pierde al recrear el contenedor. El <em>provisioning</em> lo declara en un archivo:</p>
 
@@ -776,6 +862,92 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
   <div class="anat-row"><div class="lab">period: 24h</div><div class="txt">El índice se parte en tablas de un día. No lo toques.</div></div>
 </div>
 
+<h3>El mismo archivo, en un cluster real</h3>
+<p>Los tres bloques de arriba —<code>common</code>, <code>ring</code> y <code>schema_config</code>— son justo los que cambian al pasar de una máquina a varias. Esta comparación es la diferencia entre una demo y algo que aguanta.</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">un solo proceso</span></div>
+    <div class="env-body">
+      <p>Todo en disco, sin coordinación con nadie: no hay más nodos con los que hablar.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">local</span><span></span></div><pre><code><span class="k">common:</span>
+  <span class="k">path_prefix:</span> <span class="v">/tmp/loki</span>
+  <span class="k">replication_factor:</span> <span class="v">1</span>
+  <span class="k">ring:</span>
+    <span class="k">kvstore:</span>
+      <span class="k">store:</span> <span class="v">inmemory</span>
+  <span class="k">storage:</span>
+    <span class="k">filesystem:</span>
+      <span class="k">chunks_directory:</span> <span class="v">/tmp/loki/chunks</span>
+
+<span class="k">schema_config:</span>
+  <span class="k">configs:</span>
+    - <span class="k">object_store:</span> <span class="v">filesystem</span></code></pre></div>
+  </div>
+
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">varios nodos</span></div>
+    <div class="env-body">
+      <p>Los chunks van a almacenamiento de objetos —cualquier nodo debe poder leerlos— y los nodos se descubren entre sí por <code>memberlist</code>.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">common:</span>
+  <span class="k">path_prefix:</span> <span class="v">/loki</span>
+<span class="hl">  <span class="k">replication_factor:</span> <span class="v">3</span>
+  <span class="k">ring:</span>
+    <span class="k">kvstore:</span>
+      <span class="k">store:</span> <span class="v">memberlist</span></span>
+  <span class="k">storage:</span>
+    <span class="k">s3:</span>
+      <span class="k">endpoint:</span> <span class="v">s3.us-east-2.amazonaws.com</span>
+      <span class="k">region:</span> <span class="v">us-east-2</span>
+      <span class="k">bucketnames:</span> <span class="v">loki-chunks-prod</span>
+      <span class="k">access_key_id:</span> <span class="v">${S3_ACCESS_KEY_ID}</span>
+      <span class="k">secret_access_key:</span> <span class="v">${S3_SECRET_ACCESS_KEY}</span>
+
+<span class="k">memberlist:</span>
+  <span class="k">join_members:</span>
+    - <span class="v">loki-memberlist:7946</span>
+
+<span class="k">schema_config:</span>
+  <span class="k">configs:</span>
+    - <span class="k">object_store:</span> <span class="v">s3</span></code></pre></div>
+  </div>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">object store</div><div class="txt">S3, GCS, Azure Blob o MinIO si te lo montas tú. La razón no es el tamaño: es que <strong>cualquier nodo tiene que poder leer los chunks que escribió otro</strong>. Con <code>filesystem</code> cada nodo solo ve los suyos.</div></div>
+  <div class="anat-row"><div class="lab">memberlist</div><div class="txt">Un protocolo de cotilleo por el que los nodos se descubren solos. Sustituye al <code>inmemory</code> de un solo proceso sin necesidad de montar Consul.</div></div>
+  <div class="anat-row"><div class="lab">replication_factor: 3</div><div class="txt">Cada línea se guarda en tres ingesters. Si uno cae, no pierdes nada. <strong>Exige al menos tres nodos</strong>: ponerlo con menos deja a Loki esperando réplicas que no llegan.</div></div>
+  <div class="anat-row"><div class="lab">${VARIABLES}</div><div class="txt">Loki no expande variables de entorno por defecto. Hay que arrancarlo con <code>-config.expand-env=true</code> o el literal <code>${S3_ACCESS_KEY_ID}</code> viajará tal cual como clave.</div></div>
+</div>
+
+<h3>Retención: en local no existe, en producción es obligatoria</h3>
+<p>Este stack no borra nada nunca. En producción eso llena el bucket y encarece la factura mes a mes.</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">sin retención</span></div>
+    <div class="env-body">
+      <p>No hay compactor y <code>retention_period</code> vale <code>0</code>: los datos se quedan hasta que borres el volumen a mano.</p>
+      <p>Para una demo está bien. Es, de hecho, lo que hace este proyecto.</p>
+    </div>
+  </div>
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">compactor</span></div>
+    <div class="env-body">
+      <p>El <em>compactor</em> es quien aplica la retención y compacta índices. Sin él, <code>retention_period</code> se ignora en silencio.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">compactor:</span>
+  <span class="k">working_directory:</span> <span class="v">/loki/compactor</span>
+<span class="hl">  <span class="k">retention_enabled:</span> <span class="v">true</span></span>
+  <span class="k">delete_request_store:</span> <span class="v">s3</span>
+
+<span class="k">limits_config:</span>
+  <span class="k">retention_period:</span> <span class="v">744h</span>   <span class="c"># 31 días</span></code></pre></div>
+  </div>
+</div>
+
 <h3>limits_config — los límites que te van a frenar</h3>
 <p>Este bloque es donde vive casi todo lo que hace que Loki rechace tus datos. Los valores por defecto están pensados para logs que llegan <em>en tiempo real</em>, no para cargar un histórico.</p>
 
@@ -811,6 +983,38 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 <tr><td data-label="Parámetro"><code>split_queries_by_interval</code></td><td class="num" data-label="Por defecto">30m</td><td class="d" data-label="Qué pasa si lo dejas así">Trocea una consulta larga en subconsultas paralelas. Con históricos largos, <code>24h</code> va mejor.</td></tr>
 </tbody>
 </table>
+</div>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">límites abiertos</span></div>
+    <div class="env-body">
+      <p>Aquí los límites <strong>estorban</strong>: quieres cargar de golpe un histórico de 30 días. Se abren de par en par a propósito.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">local</span><span></span></div><pre><code><span class="k">reject_old_samples:</span> <span class="v">false</span>
+<span class="k">ingestion_rate_mb:</span> <span class="v">512</span>
+<span class="k">per_stream_rate_limit:</span> <span class="v">512MB</span>
+<span class="k">max_query_length:</span> <span class="v">0</span>       <span class="c"># sin tope</span>
+<span class="k">max_global_streams_per_user:</span> <span class="v">0</span></code></pre></div>
+  </div>
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">límites como defensa</span></div>
+    <div class="env-body">
+      <p>Aquí los límites <strong>te protegen</strong>: de una aplicación que entra en bucle, de una etiqueta con cardinalidad descontrolada, de una consulta que barre un año.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">reject_old_samples:</span> <span class="v">true</span>
+<span class="k">reject_old_samples_max_age:</span> <span class="v">168h</span>
+<span class="k">ingestion_rate_mb:</span> <span class="v">10</span>
+<span class="k">per_stream_rate_limit:</span> <span class="v">5MB</span>
+<span class="hl"><span class="k">max_global_streams_per_user:</span> <span class="v">10000</span></span>
+<span class="k">max_query_length:</span> <span class="v">721h</span>
+<span class="k">split_queries_by_interval:</span> <span class="v">30m</span></code></pre></div>
+  </div>
+</div>
+
+<div class="note key">
+<span class="note-label">Los límites cambian de bando</span>
+<p>Es el giro conceptual del capítulo. En una demo un límite es un obstáculo entre tú y tus datos; en producción es lo único que separa un incidente de una aplicación de una caída de <em>toda</em> tu observabilidad. <code>max_global_streams_per_user</code> no está en la configuración local de este proyecto —vale <code>0</code>, sin tope— y en producción es probablemente el ajuste más importante de la lista.</p>
 </div>
 
 <h3>ingester — memoria y ventana temporal</h3>
@@ -892,6 +1096,67 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
   <div class="anat-row"><div class="lab">stage regex</div><div class="txt">Extrae campos con nombre. Sintaxis Go: <code>(?P&lt;nombre&gt;…)</code>. Lo extraído vive solo durante el pipeline; no se convierte en etiqueta por sí solo.</div></div>
   <div class="anat-row"><div class="lab">stage timestamp</div><div class="txt">Le dice a Loki que use la fecha <em>de dentro</em> del log, no la hora de lectura. Sin esta etapa, un log de julio se guarda con la marca de hoy.</div></div>
   <div class="anat-row"><div class="lab">stage labels</div><div class="txt">Promociona un campo extraído a etiqueta indexada. <strong>Aquí es donde se hace daño.</strong> Ver capítulo siguiente.</div></div>
+</div>
+
+<h3>De rutas fijas a descubrimiento automático</h3>
+<p>El <code>static_configs</code> de arriba nombra los archivos uno a uno. Eso solo funciona mientras sepas de antemano qué hay en la máquina; en cuanto los contenedores se crean y destruyen solos, deja de servir.</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">rutas escritas a mano</span></div>
+    <div class="env-body">
+      <p>Sabes exactamente qué archivo quieres y dónde está. Las posiciones viven en un directorio del proyecto.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">local</span><span></span></div><pre><code><span class="k">positions:</span>
+  <span class="k">filename:</span> <span class="v">/tmp/positions.yaml</span>
+
+<span class="k">clients:</span>
+  - <span class="k">url:</span> <span class="v">http://loki:3100/loki/api/v1/push</span>
+
+<span class="k">scrape_configs:</span>
+  - <span class="k">job_name:</span> <span class="v">nginx-demo-logs</span>
+    <span class="k">static_configs:</span>
+      - <span class="k">targets:</span> [<span class="v">localhost</span>]
+        <span class="k">labels:</span>
+          <span class="k">__path__:</span> <span class="v">/var/log/app-logs/access.log</span></code></pre></div>
+  </div>
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">service discovery</span></div>
+    <div class="env-body">
+      <p>Promtail pregunta al orquestador qué hay corriendo y se entera solo de los pods nuevos. Las etiquetas se derivan del propio cluster.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">positions:</span>
+<span class="hl">  <span class="k">filename:</span> <span class="v">/var/lib/promtail/positions.yaml</span></span>
+
+<span class="k">clients:</span>
+  - <span class="k">url:</span> <span class="v">https://loki.midominio.com/loki/api/v1/push</span>
+    <span class="k">tenant_id:</span> <span class="v">tienda</span>
+    <span class="k">basic_auth:</span>
+      <span class="k">username:</span> <span class="v">promtail</span>
+      <span class="k">password_file:</span> <span class="v">/etc/promtail/secrets/loki-password</span>
+    <span class="k">tls_config:</span>
+      <span class="k">ca_file:</span> <span class="v">/etc/ssl/certs/ca-certificates.crt</span>
+
+<span class="k">scrape_configs:</span>
+  - <span class="k">job_name:</span> <span class="v">kubernetes-pods</span>
+    <span class="k">kubernetes_sd_configs:</span>
+      - <span class="k">role:</span> <span class="v">pod</span>
+    <span class="k">relabel_configs:</span>
+      - <span class="k">source_labels:</span> [<span class="v">__meta_kubernetes_namespace</span>]
+        <span class="k">target_label:</span> <span class="v">namespace</span>
+      - <span class="k">source_labels:</span> [<span class="v">__meta_kubernetes_pod_label_app</span>]
+        <span class="k">target_label:</span> <span class="v">app</span>
+      - <span class="k">action:</span> <span class="v">drop</span>
+        <span class="k">source_labels:</span> [<span class="v">__meta_kubernetes_pod_phase</span>]
+        <span class="k">regex:</span> <span class="s">(Succeeded|Failed)</span></code></pre></div>
+  </div>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">positions</div><div class="txt">En local está en <code>/tmp</code> y no pasa nada si se pierde. <strong>En producción tiene que ir en un volumen persistente</strong>: si el pod reinicia y las posiciones se fueron, Promtail relee cada archivo desde el principio y duplicas todos los logs.</div></div>
+  <div class="anat-row"><div class="lab">tenant_id</div><div class="txt">Obligatorio si activaste <code>auth_enabled: true</code>. En local no existe porque solo hay un inquilino ficticio.</div></div>
+  <div class="anat-row"><div class="lab">password_file</div><div class="txt">Un archivo, no la contraseña en línea. Así el secreto lo monta el orquestador y nunca aparece en la configuración.</div></div>
+  <div class="anat-row"><div class="lab">action: drop</div><div class="txt">Descarta targets antes de leerlos. Sin esta regla acabas ingiriendo los logs de todos los pods terminados del cluster.</div></div>
 </div>
 
 <div class="note warn">
@@ -1030,6 +1295,32 @@ curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</sp
 <tr><td data-label="Campo"><code>trace_id</code></td><td style="color:var(--bad);font-weight:600" data-label="¿Etiqueta?">Nunca</td><td class="d" data-label="Motivo">Único por definición. Este es el caso de libro.</td></tr>
 </tbody>
 </table>
+</div>
+
+<h3>El presupuesto real de streams</h3>
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">da lo mismo</span></div>
+    <div class="env-body">
+      <p>Con 20 streams y un solo proceso, la cardinalidad es un concepto teórico. Puedes equivocarte y no notarlo.</p>
+      <p>Por eso este proyecto tiene <code>max_global_streams_per_user: 0</code> — sin tope.</p>
+    </div>
+  </div>
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">se paga en RAM</span></div>
+    <div class="env-body">
+      <p>Cada stream activo mantiene un chunk abierto <strong>en memoria de cada ingester</strong>, multiplicado por el factor de replicación.</p>
+      <p>Una etiqueta mal elegida en un despliegue puede tirar los ingesters en minutos. Por eso se pone un tope y se vigila.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">limits_config:</span>
+  <span class="k">max_global_streams_per_user:</span> <span class="v">10000</span>
+  <span class="k">max_label_names_per_series:</span> <span class="v">15</span></code></pre></div>
+  </div>
+</div>
+
+<div class="note tip">
+<span class="note-label">Cómo vigilarlo antes de que duela</span>
+<p>Loki publica en <code>/metrics</code> el número de streams activos. Un panel con <code>loki_ingester_memory_streams</code> y una alerta cuando se acerque a tu tope avisa <em>antes</em> de que el ingester se quede sin memoria. Es de los primeros paneles que conviene montar en un despliegue real.</p>
 </div>
 
 <div class="note key">
@@ -1613,6 +1904,46 @@ sum(count_over_time({job="nginx_timed"}[5m]))</code></pre>
 </div>
 <p>Con datos uniformes la diferencia es de décimas; con tráfico real desbalanceado, no.</p>
 
+<h3>La misma consulta cuesta muy distinto según dónde corra</h3>
+<p>En tu portátil una consulta lenta te hace esperar. En producción, con varias personas mirando dashboards a la vez, una consulta mal acotada satura a los queriers y tumba los paneles de todos.</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">sin red de seguridad</span></div>
+    <div class="env-body">
+      <p>Todo desactivado para poder barrer 30 días sin que nada te corte.</p>
+      <p>Si una consulta tarda cinco minutos, es tu problema y el de nadie más.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">local</span><span></span></div><pre><code><span class="k">max_query_length:</span> <span class="v">0</span>
+<span class="k">max_query_lookback:</span> <span class="v">0</span>
+<span class="k">split_queries_by_interval:</span> <span class="v">24h</span></code></pre></div>
+  </div>
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">caché y troceado</span></div>
+    <div class="env-body">
+      <p>Se trocea más fino para paralelizar, se cachean los resultados y se limita cuánto puede pedir una sola persona.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">limits_config:</span>
+  <span class="k">max_query_length:</span> <span class="v">721h</span>
+  <span class="k">max_query_parallelism:</span> <span class="v">32</span>
+  <span class="k">split_queries_by_interval:</span> <span class="v">30m</span>
+
+<span class="k">query_range:</span>
+  <span class="k">align_queries_with_step:</span> <span class="v">true</span>
+  <span class="k">cache_results:</span> <span class="v">true</span>
+  <span class="k">results_cache:</span>
+    <span class="k">cache:</span>
+      <span class="k">embedded_cache:</span>
+        <span class="k">enabled:</span> <span class="v">true</span>
+        <span class="k">max_size_mb:</span> <span class="v">512</span></code></pre></div>
+  </div>
+</div>
+
+<div class="note tip">
+<span class="note-label">Las consultas caras se precalculan</span>
+<p>Un <code>quantile_over_time</code> con <code>unwrap</code> sobre millones de líneas es carísimo, y en un dashboard se reejecuta con cada refresco. En producción eso se resuelve con el <em>ruler</em>: una regla de grabación calcula la métrica cada minuto y la guarda en Prometheus, y el panel consulta el resultado ya hecho en vez de recorrer los logs otra vez.</p>
+</div>
+
 <div class="note key">
 <span class="note-label">Variables de Grafana</span>
 <p>En los paneles verás <code>[$__interval]</code> y <code>[$__range]</code>. El primero es el ancho de un píxel de la gráfica —Grafana lo calcula según el zoom—; el segundo es todo el rango de tiempo visible, y es el que se usa en las consultas instantáneas de los paneles Stat. <code>$__auto</code> hace lo mismo que <code>$__interval</code> pero solo existe desde Grafana 10.2.</p>
@@ -1741,6 +2072,38 @@ docker compose up -d</code></pre>
 </div>
 </div>
 
+<h3>Este problema casi no existe en producción</h3>
+<p>Merece decirse, porque la solución de emergencia del apartado anterior es exactamente lo que <strong>no</strong> debes copiar a un entorno real.</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">cargas un histórico</span></div>
+    <div class="env-body">
+      <p>Ingieres de golpe 30 días de logs generados y desordenados. Todo llega “viejo”, y por eso hay que abrir la ventana del ingester.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">local</span><span></span></div><pre><code><span class="k">ingester:</span>
+  <span class="k">max_chunk_age:</span> <span class="v">1560h</span>   <span class="c"># 65 días</span>
+<span class="k">limits_config:</span>
+  <span class="k">reject_old_samples:</span> <span class="v">false</span></code></pre></div>
+  </div>
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">los logs llegan al momento</span></div>
+    <div class="env-body">
+      <p>Una aplicación viva escribe en orden y Promtail los envía en segundos. La ventana por defecto sobra, y dejarla estrecha <strong>es una protección</strong>: avisa de relojes desincronizados y de reprocesos accidentales.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">ingester:</span>
+  <span class="k">max_chunk_age:</span> <span class="v">2h</span>       <span class="c"># el valor por defecto</span>
+<span class="k">limits_config:</span>
+  <span class="k">reject_old_samples:</span> <span class="v">true</span>
+  <span class="k">reject_old_samples_max_age:</span> <span class="v">168h</span></code></pre></div>
+  </div>
+</div>
+
+<div class="note warn">
+<span class="note-label">Si ves este error en producción, no subas max_chunk_age</span>
+<p>Ahí el error no es un obstáculo: es un <strong>síntoma</strong>. Casi siempre significa una de tres cosas: el reloj de una máquina va desfasado (revisa NTP), alguien reprocesó un archivo antiguo, o el stage <code>timestamp</code> está parseando mal la fecha y te la coloca en otro año. Ensanchar la ventana esconde el problema y llena tu almacenamiento de datos con fechas equivocadas.</p>
+</div>
+
 <h3>Comprobar que funcionó</h3>
 <div class="code">
 <div class="code-bar"><span class="tag">terminal</span><span>verificación</span></div>
@@ -1795,6 +2158,40 @@ access_log /var/log/nginx/access.log timed;</code></pre>
   <div class="anat-row"><div class="lab">$request_time</div><div class="txt">Lo que tarda <strong>desde el punto de vista del cliente</strong>: desde el primer byte de la petición hasta el último de la respuesta. Incluye red y TLS.</div></div>
   <div class="anat-row"><div class="lab">$upstream_response_time</div><div class="txt">Lo que tardó <strong>tu aplicación</strong> en responderle a nginx. Siempre menor.</div></div>
   <div class="anat-row"><div class="lab">La diferencia</div><div class="txt">Es el coste de red, TLS y <em>buffering</em>. Si se dispara, el problema no está en tu código. Graficar ambas superpuestas es de los paneles más útiles que puedes tener.</div></div>
+</div>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">logs sintéticos</span></div>
+    <div class="env-body">
+      <p>Un script de Python inventa las líneas y las escribe ya ordenadas, con un incidente colocado a propósito para tener algo que investigar.</p>
+      <p>El archivo nunca rota ni cambia de nombre.</p>
+    </div>
+  </div>
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">nginx de verdad</span></div>
+    <div class="env-body">
+      <p>Las escribe nginx con el <code>log_format</code> que definas, y <strong>logrotate las rota cada noche</strong>. Promtail sigue la rotación solo si el patrón la contempla.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="c"># promtail: contempla el archivo rotado</span>
+<span class="k">__path__:</span> <span class="v">/var/log/nginx/access.log</span>
+
+<span class="c"># logrotate: NO uses copytruncate,</span>
+<span class="c"># pierde líneas entre el copiado y el truncado</span>
+/var/log/nginx/*.log {
+  daily
+  rotate 14
+  <span class="k">create</span> 0640 www-data adm
+  <span class="k">postrotate</span>
+    nginx -s reopen
+  <span class="k">endscript</span>
+}</code></pre></div>
+  </div>
+</div>
+
+<div class="note warn">
+<span class="note-label">La rotación es donde se pierden logs</span>
+<p>Con <code>copytruncate</code>, logrotate copia el archivo y luego lo vacía; lo que se escriba entre esas dos operaciones desaparece. Y si Promtail estaba leyendo por el descriptor antiguo, puede seguir apuntando a un archivo que ya nadie escribe. Usa <code>create</code> + <code>postrotate</code> con <code>nginx -s reopen</code>, que es lo que hace la configuración de arriba.</p>
 </div>
 
 <h3>Media contra percentiles</h3>
@@ -2162,6 +2559,10 @@ sum(rate({job="cloudflare_waf"}[$__interval]))
 <tr><td class="d" data-label="Síntoma">El Worker no logra escribir en Loki</td><td class="d" data-label="Dónde mirar">Corre en el borde de Cloudflare: <code>http://loki:3100</code> no existe para él. Necesita URL pública con TLS.</td></tr>
 <tr><td class="d" data-label="Síntoma">Los logs del Worker salen fechados en 1970</td><td class="d" data-label="Dónde mirar">Loki espera <strong>nanosegundos</strong>. <code>Date.now()</code> da milisegundos: faltan seis ceros.</td></tr>
 <tr><td class="d" data-label="Síntoma">Se pierden logs justo durante un ataque</td><td class="d" data-label="Dónde mirar"><code>per_stream_rate_limit</code>. El pico entero cae en el mismo stream. Capítulo 09.</td></tr>
+<tr><td class="d" data-label="Síntoma">Al pasar a producción se duplican los logs</td><td class="d" data-label="Dónde mirar">Las posiciones estaban en <code>/tmp</code> y se perdieron al reiniciar. Volumen persistente. Capítulo 03.</td></tr>
+<tr><td class="d" data-label="Síntoma"><code>${VAR}</code> llega literal a la configuración</td><td class="d" data-label="Dónde mirar">Loki no expande variables por defecto. Arráncalo con <code>-config.expand-env=true</code>.</td></tr>
+<tr><td class="d" data-label="Síntoma">La retención no borra nada</td><td class="d" data-label="Dónde mirar">Falta el <code>compactor</code> con <code>retention_enabled: true</code>. Sin él, <code>retention_period</code> se ignora en silencio.</td></tr>
+<tr><td class="d" data-label="Síntoma">Un nodo nuevo no ve los chunks de los demás</td><td class="d" data-label="Dónde mirar">Almacenamiento <code>filesystem</code> en un cluster. Necesita object store compartido. Capítulo 02.</td></tr>
 </tbody>
 </table>
 </div>
