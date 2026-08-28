@@ -74,11 +74,12 @@ id de transacción **no**: serían un stream por línea. Se extraen al consultar
 
 ## Guía
 
-`guia/index.html` es un documento autocontenido con diez capítulos y nueve diagramas:
+La guía es un documento autocontenido con once capítulos y diez diagramas:
 las tres piezas del stack, cómo levantar el proyecto, la configuración de Loki y Promtail
 término por término, el modelo de labels y streams, **cómo servir varios proyectos desde
 un mismo Loki**, **LogQL desde cero en ocho niveles**, el error de los timestamps, cómo
-medir latencia, y una chuleta de diagnóstico.
+medir latencia, **cómo llevar los logs de un WAF de Cloudflare a tus dashboards**, y una
+chuleta de diagnóstico.
 
 Es un único fichero HTML sin dependencias: se abre en el navegador tal cual.
 

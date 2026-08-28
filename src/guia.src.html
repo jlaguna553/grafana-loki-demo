@@ -372,7 +372,8 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
     <a href="#c6"><span class="n">06</span><span>LogQL desde cero</span></a>
     <a href="#c7"><span class="n">07</span><span>El error que vas a ver</span></a>
     <a href="#c8"><span class="n">08</span><span>Medir latencia</span></a>
-    <a href="#c9"><span class="n">09</span><span>Chuleta</span></a>
+    <a href="#c9"><span class="n">09</span><span>WAF de Cloudflare</span></a>
+    <a href="#c10"><span class="n">10</span><span>Chuleta</span></a>
   </nav>
 </aside>
 
@@ -1850,10 +1851,278 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 </div>
 </section>
 
-<!-- ================= CAP 8 ================= -->
+<!-- ================= CAP 9 ================= -->
 <section class="chapter" id="c9">
 <div class="chapter-head">
   <div class="chapter-num">Capítulo 09</div>
+  <h2>Logs de un WAF: Cloudflare en tus dashboards</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">Hasta aquí los logs venían de ficheros en tu disco. Un WAF es distinto: los logs los tiene un tercero, en su nube, y hay que ir a buscarlos. Cómo se hace depende de tu plan de Cloudflare, y esa es la primera decisión.</p>
+
+<h3>Qué es un WAF y qué escribe en sus logs</h3>
+<p>Un <strong>WAF</strong> (Web Application Firewall) se sienta delante de tu servidor e inspecciona cada petición antes de dejarla pasar. Cuando una coincide con una regla —una inyección SQL, un escaneo de rutas conocidas, un país bloqueado— la marca y actúa.</p>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">zone</div><div class="txt">En Cloudflare, un <em>dominio</em>. Cada zona tiene su propio identificador (<code>zone_id</code>) y sus propios logs. Si gestionas varios dominios, son varias zonas.</div></div>
+  <div class="anat-row"><div class="lab">acción</div><div class="txt">Lo que el WAF decidió: <code>allow</code>, <code>block</code>, <code>challenge</code> (captcha), <code>jschallenge</code>, <code>log</code> (solo registra, no bloquea) o <code>skip</code>. Es el campo más importante de todos.</div></div>
+  <div class="anat-row"><div class="lab">regla</div><div class="txt">Qué la disparó. Viene como identificador (<code>WAFRuleID</code>) y grupo de reglas. Una regla dispara mucho es señal de ataque dirigido… o de un falso positivo bloqueando a tus usuarios.</div></div>
+  <div class="anat-row"><div class="lab">dataset</div><div class="txt">Cloudflare separa sus logs en conjuntos: <code>http_requests</code> (todas las peticiones), <code>firewall_events</code> (solo lo que tocó una regla), y otros. <strong>Cuál puedes leer depende del método</strong>, y eso condiciona todo lo demás.</div></div>
+</div>
+
+<h3>Las tres vías, y cuál te toca</h3>
+<p>No hay una sola forma de sacar estos logos de Cloudflare, y la que elijas viene impuesta sobre todo por el plan que tengas contratado.</p>
+
+<figure>
+<div class="fig-frame">
+<svg viewBox="0 0 900 340" role="img" aria-label="Tres formas de llevar logs de Cloudflare a Loki: el scrape config nativo de Promtail vía Logpull, Logpush hacia un almacén intermedio, o un Worker que hace push directo. Solo la del Worker funciona sin plan Enterprise y es la de menor latencia.">
+  <defs>
+    <marker id="ar9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+    <marker id="ar9g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--good)"/>
+    </marker>
+  </defs>
+
+  <rect x="14" y="20" width="104" height="300" rx="4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".45"/>
+  <text x="66" y="42" text-anchor="middle" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="currentColor">Cloudflare</text>
+  <text x="66" y="60" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".65">tu zona</text>
+
+  <!-- A -->
+  <text x="150" y="42" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="currentColor">A · Promtail tira de la Logpull API</text>
+  <line x1="122" y1="66" x2="168" y2="66" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar9)"/>
+  <rect x="172" y="48" width="152" height="38" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="248" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">scrape: cloudflare</text>
+  <line x1="328" y1="66" x2="374" y2="66" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar9)"/>
+  <rect x="378" y="48" width="90" height="38" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="423" y="72" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--accent)">Loki</text>
+  <text x="490" y="64" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--bad)">requiere Enterprise</text>
+  <text x="490" y="80" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".7">latencia ~1–5 min · dataset http_requests</text>
+
+  <!-- B -->
+  <text x="150" y="146" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="currentColor">B · Logpush a un almacén intermedio</text>
+  <line x1="122" y1="170" x2="168" y2="170" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar9)"/>
+  <rect x="172" y="152" width="152" height="38" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="248" y="176" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor">R2 · S3 · endpoint</text>
+  <line x1="328" y1="170" x2="374" y2="170" stroke="currentColor" stroke-width="1.4" marker-end="url(#ar9)"/>
+  <rect x="378" y="152" width="90" height="38" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="423" y="176" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--accent)">Loki</text>
+  <text x="490" y="168" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--bad)">requiere Enterprise</text>
+  <text x="490" y="184" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".7">latencia ~5 min · lotes · firewall_events</text>
+
+  <!-- C -->
+  <text x="150" y="250" font-family="Archivo, sans-serif" font-size="13" font-weight="600" fill="var(--good)">C · Un Worker empuja a Loki</text>
+  <line x1="122" y1="274" x2="168" y2="274" stroke="var(--good)" stroke-width="1.8" marker-end="url(#ar9g)"/>
+  <rect x="172" y="256" width="152" height="38" rx="3" fill="none" stroke="var(--good)" stroke-width="1.8"/>
+  <text x="248" y="280" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="var(--good)">Cloudflare Worker</text>
+  <line x1="328" y1="274" x2="374" y2="274" stroke="var(--good)" stroke-width="1.8" marker-end="url(#ar9g)"/>
+  <rect x="378" y="256" width="90" height="38" rx="3" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+  <text x="423" y="280" text-anchor="middle" font-family="Archivo, sans-serif" font-size="12.5" font-weight="600" fill="var(--accent)">Loki</text>
+  <text x="490" y="272" font-family="JetBrains Mono, monospace" font-size="10.5" fill="var(--good)">funciona en CUALQUIER plan</text>
+  <text x="490" y="288" font-family="JetBrains Mono, monospace" font-size="10.5" fill="currentColor" opacity=".7">latencia ~1 s · exige exponer Loki</text>
+
+  <line x1="14" y1="310" x2="886" y2="310" stroke="currentColor" stroke-width="1" opacity=".15"/>
+  <text x="14" y="332" font-family="JetBrains Mono, monospace" font-size="11" fill="currentColor" opacity=".85">Sin Enterprise, C es la única vía — y además es la que de verdad va en segundos.</text>
+</svg>
+</div>
+<figcaption>A y B leen lo que Cloudflare ya archivó, y por eso arrastran minutos de retraso. C intercepta la petición en el momento, al coste de tener que abrir Loki a internet.</figcaption>
+</figure>
+
+<div class="note warn">
+<span class="note-label">Antes de seguir · qué NO es tiempo real</span>
+<p>Las vías A y B leen registros que Cloudflare consolida por lotes. <strong>El retraso es de minutos y no se puede reducir con configuración</strong>, por mucho que bajes el intervalo de sondeo: si pides datos más recientes que la ventana disponible, Cloudflare devuelve vacío.</p>
+<p>Si necesitas ver un ataque mientras ocurre, la vía C es la única. Si te vale mirar cinco minutos atrás —que para la mayoría de paneles es suficiente— A es mucho más simple de operar.</p>
+</div>
+
+<h3>Vía A · El scrape config nativo de Promtail</h3>
+<p>Promtail trae soporte de Cloudflare de fábrica: no hace falta ningún agente extra. Este bloque está <strong>verificado contra Promtail 2.9</strong>; su validador rechaza cualquier campo que no exista, así que estos son exactamente los que acepta.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">promtail-config.yml</span><span>scrape de cloudflare</span></div>
+<pre><code><span class="k">scrape_configs:</span>
+  - <span class="k">job_name:</span> <span class="v">cloudflare_waf</span>
+    <span class="k">cloudflare:</span>
+<span class="hl">      <span class="k">api_token:</span> <span class="v">${CF_API_TOKEN}</span>     <span class="c"># token con permiso Logs:Read</span>
+      <span class="k">zone_id:</span> <span class="v">${CF_ZONE_ID}</span>        <span class="c"># una zona = un dominio</span></span>
+      <span class="k">fields_type:</span> <span class="v">extended</span>       <span class="c"># default | minimal | extended | all</span>
+      <span class="k">pull_range:</span> <span class="v">5m</span>              <span class="c"># cuánto pide en cada tirón</span>
+      <span class="k">workers:</span> <span class="v">3</span>                  <span class="c"># descargas en paralelo</span>
+      <span class="k">labels:</span>
+        <span class="k">job:</span> <span class="v">cloudflare_waf</span>
+        <span class="k">zone:</span> <span class="v">midominio.com</span>
+        <span class="k">env:</span> <span class="v">prod</span></code></pre>
+</div>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Campo</th><th>Qué hace</th><th>Cuidado</th></tr></thead>
+<tbody>
+<tr><td><code>api_token</code></td><td class="d">Token de Cloudflare con permiso <em>Logs: Read</em> sobre la zona.</td><td class="d">Token, <strong>no</strong> la Global API Key. Nunca en el fichero: por variable de entorno.</td></tr>
+<tr><td><code>zone_id</code></td><td class="d">Identifica el dominio. Está en el panel de Cloudflare, en Overview.</td><td class="d">Cambia por dominio <em>y</em> por entorno. Es el valor que más se equivoca al promocionar de staging a producción.</td></tr>
+<tr><td><code>fields_type</code></td><td class="d">Cuántos campos trae cada registro.</td><td class="d"><code>default</code> no incluye los campos de WAF. Para ver acciones y reglas necesitas <code>extended</code> o <code>all</code>.</td></tr>
+<tr><td><code>pull_range</code></td><td class="d">Tamaño de la ventana que descarga en cada iteración.</td><td class="d">Muy corto y pides datos que Cloudflare aún no ha consolidado: vendrán vacíos.</td></tr>
+<tr><td><code>workers</code></td><td class="d">Descargas simultáneas.</td><td class="d">Subirlo acelera el arranque en zonas con mucho tráfico; también multiplica el consumo de memoria.</td></tr>
+<tr><td><code>labels</code></td><td class="d">Etiquetas fijas para todo lo que entre por aquí.</td><td class="d">Aquí es donde pones <code>env</code> y <code>zone</code> para poder separar entornos.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note key">
+<span class="note-label">El detalle que descoloca a todo el mundo</span>
+<p>Este scrape config <strong>no tiene campo <code>dataset</code></strong>. Lo comprobé: Promtail 2.9 rechaza <code>dataset</code>, <code>account_id</code>, <code>endpoint</code> y <code>additional_fields</code> como campos inexistentes. Solo acepta los seis de la tabla.</p>
+<p>Eso significa que <strong>no lee <code>firewall_events</code></strong>: lee <code>http_requests</code>, donde la información del WAF viene como campos dentro de cada petición (<code>WAFAction</code>, <code>WAFRuleID</code>, <code>SecurityLevel</code>…). Por eso <code>fields_type</code> importa tanto: con <code>default</code> esos campos sencillamente no vienen, y te quedas mirando un panel vacío sin entender por qué.</p>
+</div>
+
+<h3>Vía C · Un Worker que empuja a Loki</h3>
+<p>Un <em>Worker</em> es código tuyo que Cloudflare ejecuta en su borde, en la misma petición. Como se ejecuta en el momento, puede mandar el evento a Loki al instante en vez de esperar a que se archive.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">worker.js</span><span>push directo a Loki</span></div>
+<pre><code><span class="k">export default</span> {
+  <span class="k">async</span> fetch(request, env, ctx) {
+    <span class="k">const</span> response = <span class="k">await</span> fetch(request);   <span class="c">// deja pasar la petición</span>
+
+    <span class="k">const</span> cf = request.cf ?? {};
+    <span class="k">const</span> evento = {
+      ClientIP:          request.headers.get(<span class="s">"cf-connecting-ip"</span>),
+      ClientRequestURI:  <span class="k">new</span> URL(request.url).pathname,
+      ClientRequestMethod: request.method,
+      ClientCountry:     cf.country ?? <span class="s">"xx"</span>,
+      EdgeResponseStatus: response.status,
+      WAFAction:         response.status === <span class="v">403</span> ? <span class="s">"block"</span> : <span class="s">"allow"</span>,
+      RayID:             request.headers.get(<span class="s">"cf-ray"</span>),
+    };
+
+    <span class="c">// Las etiquetas van FUERA del texto: son el índice de Loki.</span>
+    <span class="k">const</span> cuerpo = {
+      streams: [{
+        stream: {
+          job:    <span class="s">"cloudflare_waf"</span>,
+          zone:   env.ZONE,          <span class="c">// midominio.com</span>
+          env:    env.ENVIRONMENT,   <span class="c">// prod | staging</span>
+          action: evento.WAFAction,  <span class="c">// pocos valores: vale como etiqueta</span>
+        },
+        values: [[ <span class="s">`${Date.now()}000000`</span>, JSON.stringify(evento) ]],
+      }],
+    };
+
+    <span class="c">// waitUntil: el envío no retrasa la respuesta al visitante.</span>
+    ctx.waitUntil(
+      fetch(env.LOKI_URL + <span class="s">"/loki/api/v1/push"</span>, {
+        method: <span class="s">"POST"</span>,
+        headers: {
+          <span class="s">"Content-Type"</span>: <span class="s">"application/json"</span>,
+          <span class="s">"Authorization"</span>: <span class="s">"Basic "</span> + env.LOKI_AUTH,
+        },
+        body: JSON.stringify(cuerpo),
+      }).catch(() =&gt; {})   <span class="c">// si Loki cae, la web sigue funcionando</span>
+    );
+
+    <span class="k">return</span> response;
+  },
+};</code></pre>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">marca de tiempo</div><div class="txt">Loki la espera en <strong>nanosegundos</strong>. <code>Date.now()</code> da milisegundos, de ahí los seis ceros. Mandarla en milisegundos es el error más común: Loki interpreta la fecha en 1970 y la rechaza o la entierra.</div></div>
+  <div class="anat-row"><div class="lab">ctx.waitUntil</div><div class="txt">Deja que el envío termine <em>después</em> de responder al visitante. Sin esto, cada petición de tu web espera a que Loki conteste.</div></div>
+  <div class="anat-row"><div class="lab">.catch vacío</div><div class="txt">Deliberado. Si Loki no responde se pierde ese log, pero la web sigue sirviendo. Nunca dejes que tu sistema de observabilidad tire el servicio que observa.</div></div>
+  <div class="anat-row"><div class="lab">action como etiqueta</div><div class="txt">Cabe porque tiene media docena de valores. <code>ClientIP</code> y <code>RayID</code> van dentro del JSON, jamás como etiquetas: son únicos por petición y te reventarían el índice (capítulo 04).</div></div>
+</div>
+
+<div class="note warn">
+<span class="note-label">Esto obliga a exponer Loki a internet</span>
+<p>El Worker corre en la red de Cloudflare, así que <code>http://loki:3100</code> no existe para él. Necesita una URL pública, y eso cambia el problema: cualquiera que la descubra puede inyectar logs falsos o saturarte.</p>
+<p>Como mínimo: <strong>HTTPS</strong>, <strong>autenticación</strong> (Basic Auth en un proxy delante de Loki, nunca Loki desnudo) y <strong>solo la ruta de push</strong> abierta —<code>/loki/api/v1/push</code>—, dejando las de consulta cerradas. Un túnel de Cloudflare hacia tu red es más limpio que abrir un puerto.</p>
+</div>
+
+<h3>Consultar los eventos del WAF</h3>
+<p>Llegan como JSON, así que el parser es <code>| json</code> y cada campo queda disponible por su nombre. Estas consultas están probadas contra Loki con un evento real empujado por este mismo método.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">logql</span><span>paneles de WAF</span></div>
+<pre><code><span class="c"># peticiones bloqueadas por minuto</span>
+sum(rate({job="cloudflare_waf", action="block"}[$__interval]))
+
+<span class="c"># qué reglas están disparando más</span>
+topk(10, sum by (WAFRuleID) (
+  count_over_time({job="cloudflare_waf"} | json | WAFAction="block" [$__interval])
+))
+
+<span class="c"># de qué países llegan los bloqueos</span>
+sum by (ClientCountry) (
+  count_over_time({job="cloudflare_waf"} | json | WAFAction="block" [$__interval])
+)
+
+<span class="c"># las IPs más insistentes (extraídas al consultar, NO como etiqueta)</span>
+topk(20, sum by (ClientIP) (
+  count_over_time({job="cloudflare_waf"} | json | WAFAction="block" [$__range])
+))
+
+<span class="c"># tasa de bloqueo sobre el total: el número que enseñas en un Stat</span>
+sum(rate({job="cloudflare_waf", action="block"}[$__interval]))
+/
+sum(rate({job="cloudflare_waf"}[$__interval]))
+
+<span class="c"># el detalle, legible, para el panel de logs</span>
+{job="cloudflare_waf"} | json | WAFAction="block"
+  | line_format `{{.ClientCountry}} {{.ClientIP}} → {{.ClientRequestURI}} (regla {{.WAFRuleID}})`</code></pre>
+</div>
+
+<h3>Que el dashboard se actualice solo</h3>
+<p>De nada sirve ingerir rápido si el panel no se refresca. En Grafana, arriba a la derecha, se fija el intervalo de refresco; en el JSON del dashboard es el campo <code>refresh</code>.</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">dashboard.json</span><span>refresco y ventana</span></div>
+<pre><code>{
+  <span class="k">"refresh"</span>: <span class="s">"10s"</span>,
+  <span class="k">"time"</span>: { <span class="k">"from"</span>: <span class="s">"now-15m"</span>, <span class="k">"to"</span>: <span class="s">"now"</span> }
+}</code></pre>
+</div>
+
+<div class="note tip">
+<span class="note-label">Ajusta el refresco a la vía que uses</span>
+<p>Con la vía C (Worker) un refresco de <code>10s</code> tiene sentido: los datos llegan en segundos. Con las vías A o B, refrescar cada 10 s solo sirve para machacar a Loki con consultas que devuelven lo mismo, porque los datos nuevos tardan minutos. Ahí pon <code>1m</code> y una ventana de <code>now-1h</code>.</p>
+</div>
+
+<h3>Qué cambia entre entornos</h3>
+<p>Esta es la parte que rompe los despliegues. Nada de esto debería estar escrito a mano dentro de un fichero versionado.</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Valor</th><th>Por qué cambia</th><th>Dónde ponerlo</th></tr></thead>
+<tbody>
+<tr><td><code>zone_id</code></td><td class="d">Cada dominio y cada entorno es una zona distinta de Cloudflare.</td><td class="d">Variable de entorno. Es el error número uno al pasar a producción.</td></tr>
+<tr><td><code>api_token</code></td><td class="d">Un token por entorno, con permisos mínimos, revocable por separado.</td><td class="d">Secreto del orquestador. Nunca en git.</td></tr>
+<tr><td><code>LOKI_URL</code></td><td class="d">En local <code>http://loki:3100</code>; desde un Worker, una URL pública con TLS.</td><td class="d">Variable del Worker o del compose.</td></tr>
+<tr><td>Etiqueta <code>env</code></td><td class="d">Es lo que te permite tener staging y producción en el mismo Loki sin mezclarlos.</td><td class="d">En <code>labels</code>, fija por despliegue.</td></tr>
+<tr><td><code>X-Scope-OrgID</code></td><td class="d">Solo si activaste multi-tenencia (capítulo 05).</td><td class="d">Cabecera del cliente de Promtail o del Worker.</td></tr>
+<tr><td><code>pull_range</code></td><td class="d">Una zona con poco tráfico tolera ventanas largas; una con mucho, no.</td><td class="d">Config, ajustado por volumen real.</td></tr>
+<tr><td><code>per_stream_rate_limit</code></td><td class="d">Bajo ataque el volumen se multiplica <em>justo cuando más lo necesitas</em>.</td><td class="d"><code>limits_config</code> de Loki. Ver aviso abajo.</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+<span class="note-label">El fallo que solo aparece el día del ataque</span>
+<p>Un WAF en calma genera un goteo. Bajo un ataque genera picos de órdenes de magnitud más — y todos caen en el <em>mismo stream</em>, porque comparten etiquetas. El límite por stream (3 MB/s por defecto, capítulo 02) se agota y Loki empieza a descartar justo el tráfico que querías investigar.</p>
+<p>Dimensiona <code>per_stream_rate_limit</code> pensando en tu pico, no en tu media. Y si separas por <code>action</code>, los bloqueos van a su propio stream y no compiten con el tráfico normal.</p>
+</div>
+
+<div class="note key">
+<span class="note-label">Qué está verificado en este capítulo y qué no</span>
+<p>El esquema del scrape config de Cloudflare está comprobado contra Promtail 2.9: sus seis campos válidos y el rechazo de <code>dataset</code>, <code>account_id</code>, <code>endpoint</code> y <code>additional_fields</code> salen de ejecutar su validador. El envío por HTTP y las consultas LogQL están probados de extremo a extremo contra un Loki real.</p>
+<p>Lo que <strong>no</strong> se ha probado aquí contra una cuenta real de Cloudflare es el tirón de la Logpull API, que exige plan Enterprise. Los valores de latencia son los órdenes de magnitud documentados por Cloudflare, no medidas propias: contrástalos con tu zona antes de prometerle a nadie un panel «en vivo».</p>
+</div>
+</div>
+</section>
+
+<!-- ================= CAP 8 ================= -->
+<section class="chapter" id="c10">
+<div class="chapter-head">
+  <div class="chapter-num">Capítulo 10</div>
   <h2>Chuleta</h2>
 </div>
 
@@ -1875,6 +2144,10 @@ sum(count_over_time({job="nginx_timed"}[$__interval]))</code></pre>
 <tr><td class="d" data-label="Síntoma">Un proyecto nuevo no aparece</td><td class="d" data-label="Dónde mirar">El glob de <code>__path__</code> no lo cubre, o falta el bind mount del directorio en el compose.</td></tr>
 <tr><td class="d" data-label="Síntoma"><code>no org id</code></td><td class="d" data-label="Dónde mirar"><code>auth_enabled: true</code> sin cabecera <code>X-Scope-OrgID</code>. Capítulo 05.</td></tr>
 <tr><td class="d" data-label="Síntoma"><code>client version 1.42 is too old</code></td><td class="d" data-label="Dónde mirar"><code>docker_sd_configs</code> en Promtail 2.9 contra un Docker moderno. Sube a Promtail 3.x.</td></tr>
+<tr><td class="d" data-label="Síntoma">Panel de WAF vacío, pero llegan logs</td><td class="d" data-label="Dónde mirar"><code>fields_type: default</code> no incluye los campos de WAF. Pon <code>extended</code>. Capítulo 09.</td></tr>
+<tr><td class="d" data-label="Síntoma">El Worker no logra escribir en Loki</td><td class="d" data-label="Dónde mirar">Corre en el borde de Cloudflare: <code>http://loki:3100</code> no existe para él. Necesita URL pública con TLS.</td></tr>
+<tr><td class="d" data-label="Síntoma">Los logs del Worker salen fechados en 1970</td><td class="d" data-label="Dónde mirar">Loki espera <strong>nanosegundos</strong>. <code>Date.now()</code> da milisegundos: faltan seis ceros.</td></tr>
+<tr><td class="d" data-label="Síntoma">Se pierden logs justo durante un ataque</td><td class="d" data-label="Dónde mirar"><code>per_stream_rate_limit</code>. El pico entero cae en el mismo stream. Capítulo 09.</td></tr>
 </tbody>
 </table>
 </div>
@@ -1909,6 +2182,10 @@ curl -s -G localhost:3100/loki/api/v1/query_range \
   <span class="chip">provisioning = configurar Grafana por fichero</span>
   <span class="chip">tenant = inquilino aislado de Loki</span>
   <span class="chip">relabeling = derivar etiquetas de la ruta o del entorno</span>
+  <span class="chip">WAF = cortafuegos de aplicación web</span>
+  <span class="chip">zone = un dominio en Cloudflare</span>
+  <span class="chip">Logpull / Logpush = leer o recibir logs de Cloudflare</span>
+  <span class="chip">Worker = código tuyo en el borde de Cloudflare</span>
 </div>
 
 <div class="note key">
