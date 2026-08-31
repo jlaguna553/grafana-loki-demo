@@ -729,12 +729,92 @@ docker compose version</code></pre>
   <div class="anat-row"><div class="lab">url</div><div class="txt">El error número uno de todo el proyecto. <code>localhost</code> dentro del contenedor de Grafana es el propio Grafana, no Loki.</div></div>
 </div>
 
-<div class="code">
-<div class="code-bar"><span class="tag">terminal</span><span>arrancar</span></div>
-<pre><code>docker compose up -d
-docker compose ps                    <span class="c"># los tres deben estar Up</span>
-curl -s http://localhost:3100/ready  <span class="c"># debe responder: ready</span></code></pre>
+<h3>Los archivos que no son obvios</h3>
+<p>Hay varios archivos en el proyecto que aparecen mencionados pero sin explicar bien qué son, cómo se ven en local y cómo cambian en producción.</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">five archivos</span></div>
+    <div class="env-body">
+      <ul>
+        <li><code>docker-compose.yml</code> → orquesta los tres contenedores y sus volúmenes.</li>
+        <li><code>loki-config.yml</code> → cómo Loki almacena, valida y compacta.</li>
+        <li><code>promtail-config.yml</code> → qué archivos leer y cómo parsearlos.</li>
+        <li><code>.gitignore</code> → excluye <code>logs/</code> (425 MB) y <code>promtail-data/</code>.</li>
+        <li><code>vercel.json</code> → publica solo la guía en Vercel, no el stack.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">estructura distinta</span></div>
+    <div class="env-body">
+      <ul>
+        <li><strong>Kubernetes manifests</strong> en vez de compose.</li>
+        <li><strong>ConfigMap</strong> por archivo de configuración.</li>
+        <li><strong>.gitignore</strong> idéntico.</li>
+        <li><strong>Helm values</strong> para los secretos.</li>
+        <li><strong>CI/CD</strong> que genera los dashboards con código.</li>
+      </ul>
+    </div>
+  </div>
 </div>
+
+<h3>grafana/provisioning/datasources/loki.yml</h3>
+<p>Grafana ejecuta todo lo que hay en <code>/etc/grafana/provisioning</code> al arrancar, sin que toques la interfaz. El datasource declara cómo conectar con Loki:</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">nombre del servicio</span></div>
+    <div class="env-body">
+      <p>Grafana corre en Docker y <code>loki</code> es el nombre en la red interna de compose.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">local</span><span></span></div><pre><code><span class="k">url:</span> <span class="v">http://loki:3100</span></code></pre></div>
+  </div>
+
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">endpoint remoto con TLS</span></div>
+    <div class="env-body">
+      <p>Loki es accesible desde el exterior, lleva TLS y autenticación.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">url:</span> <span class="v">https://loki.midominio.com</span>
+<span class="k">basicAuth:</span> <span class="v">true</span>
+<span class="k">basicAuthUser:</span> <span class="v">grafana</span></code></pre></div>
+  </div>
+</div>
+
+<h3>grafana/provisioning/dashboards/</h3>
+<p>Un archivo <code>provider.yml</code> dice a Grafana dónde buscar los dashboards JSON. No es intuitivo, y muchos dejan la carpeta vacía sin saber por qué no carga nada:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">grafana/provisioning/dashboards/provider.yml</span><span></span></div>
+<pre><code><span class="k">apiVersion:</span> <span class="v">1</span>
+<span class="k">providers:</span>
+  - <span class="k">folder:</span> <span class="s">"Loki"</span>              <span class="c"># dónde caen en la interfaz de Grafana</span>
+    <span class="k">type:</span> <span class="v">file</span>
+    <span class="k">options:</span>
+      <span class="k">path:</span> <span class="v">/var/lib/grafana/dashboards</span></code></pre>
+</div>
+
+<h3>.gitignore y vercel.json</h3>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">.gitignore excluye datos</span></div>
+    <div class="env-body">
+      <p><code>logs/</code> son 425 MB generados. <code>promtail-data/</code> guarda posiciones de archivo. Ninguno entra en git.</p>
+    </div>
+  </div>
+
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">vercel.json publica solo HTML</span></div>
+    <div class="env-body">
+      <p><code>outputDirectory: guia</code> publica solo el directorio de la guía. Sin esto Vercel exponía docker-compose.yml (fuga de info).</p>
+    </div>
+  </div>
+</div>
+
+
 </div>
 </section>
 
