@@ -436,6 +436,7 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
   <nav>
     <a href="#c0"><span class="n">00</span><span>Las tres piezas</span></a>
     <a href="#quickstart"><span class="n">⚡</span><span>Quickstart</span></a>
+    <a href="#grafana-setup"><span class="n">🎨</span><span>Grafana setup</span></a>
     <a href="#c1"><span class="n">01</span><span>Levantar el stack</span></a>
     <a href="#c2"><span class="n">02</span><span>loki-config.yml</span></a>
     <a href="#c3"><span class="n">03</span><span>promtail-config.yml</span></a>
@@ -618,36 +619,32 @@ cd grafana-loki-demo</code></pre>
 </div>
 
 <h3>4. Genera logs de ejemplo</h3>
-<p>Sin logs no hay nada que leer. Crea un archivo con líneas de ejemplo:</p>
+<p>Sin logs no hay nada que leer. El proyecto incluye dos scripts Python:</p>
 
 <div class="code">
-<div class="code-bar"><span class="tag">terminal</span><span>genera datos</span></div>
-<pre><code>cat > logs/access.log <<'EOF'
-192.168.1.100 - - [27/Aug/2024:10:15:32 +0000] "GET /checkout HTTP/1.1" 200 5234
-192.168.1.101 - - [27/Aug/2024:10:15:33 +0000] "POST /api/login HTTP/1.1" 200 324
-192.168.1.102 - - [27/Aug/2024:10:15:34 +0000] "GET /checkout HTTP/1.1" 500 0
-192.168.1.103 - - [27/Aug/2024:10:15:35 +0000] "GET /product/123 HTTP/1.1" 404 89
-192.168.1.104 - - [27/Aug/2024:10:15:36 +0000] "POST /api/search HTTP/1.1" 200 1024
-EOF</code></pre>
+<div class="code-bar"><span class="tag">terminal</span><span>genera datos de prueba</span></div>
+<pre><code><span class="c"># Opción 1: generar 50 líneas de una vez</span>
+python3 generate_logs.py
+
+<span class="c"># Opción 2: generar 100 líneas con un rango de 5 minutos</span>
+python3 generate_logs.py --count 100 --minutes 5</code></pre>
 </div>
 
 <div class="note tip">
-<span class="note-label">Opción: generador continuo</span>
-<p>Si tienes Python, puedes generar logs constantemente en otra terminal y verlos aparecer en Grafana en tiempo real:</p>
+<span class="note-label">Generador en tiempo real (para pruebas interactivas)</span>
+<p>Abre otra terminal y ejecuta esto mientras tienes Grafana abierto. Verás los logs aparecer en vivo:</p>
 <div class="code" style="margin:.9rem 0 0">
-<pre><code>python3 <<'SCRIPT'
-import time, random, datetime
-ips = ["192.168.1." + str(100+i) for i in range(10)]
-endpoints = ["/", "/checkout", "/product/123", "/api/login", "/api/search"]
-while True:
-    ip = random.choice(ips)
-    endpoint = random.choice(endpoints)
-    status = random.choice([200, 200, 200, 404, 500])
-    timestamp = datetime.datetime.now().strftime("%d/%b/%Y:%H:%M:%S +0000")
-    print(f'{ip} - - [{timestamp}] "GET {endpoint} HTTP/1.1" {status} {random.randint(0, 5000)}')
-    time.sleep(0.5)
-SCRIPT</code></pre>
+<pre><code>python3 generate_logs_realtime.py</code></pre>
 </div>
+<p>Para ir más rápido (1 log cada 0.2 segundos en lugar de 0.5):</p>
+<div class="code" style="margin:.9rem 0 0">
+<pre><code>python3 generate_logs_realtime.py --interval 0.2</code></pre>
+</div>
+</div>
+
+<div class="anat">
+  <div class="anat-row"><div class="lab">generate_logs.py</div><div class="txt">Genera un número fijo de líneas y las escribe en el archivo. Útil para llenar el log de datos históricos. Soporta <code>--count</code> (cuántas líneas) y <code>--minutes</code> (rango de tiempo).</div></div>
+  <div class="anat-row"><div class="lab">generate_logs_realtime.py</div><div class="txt">Genera líneas continuamente en tiempo real. Abre otra terminal y déjalo corriendo mientras usas Grafana. Presiona Ctrl+C para detener. Soporta <code>--interval</code> (segundos entre logs).</div></div>
 </div>
 
 <h3>5. Arranca el stack</h3>
@@ -718,6 +715,89 @@ grafana_1   | <span class="c">info de arranque de Grafana…</span></code></pre>
 <tr><td data-label="Problema">Puerto 3000 o 3100 ya están en uso</td><td class="d" data-label="Solución">Cambia los puertos en <code>docker-compose.yml</code>: busca <code>ports:</code> y modifica el número de la izquierda. Por ejemplo: <code>"3001:3000"</code>.</td></tr>
 </tbody>
 </table>
+</div>
+
+</div>
+</section>
+
+<!-- ================= GRAFANA SETUP ================= -->
+<section class="chapter" id="grafana-setup">
+<div class="chapter-head">
+  <div class="chapter-num">Grafana</div>
+  <h2>Configuración de Grafana paso a paso</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">El provisioning automático ya configura todo, pero si algo no funciona o quieres hacerlo manualmente, estos son los pasos desde la interfaz.</p>
+
+<h3>1. Verificar que el datasource Loki esté conectado</h3>
+<ol>
+<li>En el menú izquierdo, haz click en <strong>Connections</strong> (o el icono de engranaje → <strong>Data sources</strong>).</li>
+<li>Busca <strong>Loki</strong> en la lista. Si aparece, Grafana ya lo detectó automáticamente.</li>
+<li>Si no aparece, haz click en <strong>Add new data source</strong>:
+<ul>
+<li>Selecciona <strong>Loki</strong> de la lista</li>
+<li>En <strong>URL</strong>, escribe: <code>http://loki:3100</code></li>
+<li>Haz click en <strong>Save & test</strong></li>
+</ul>
+</li>
+</ol>
+
+<h3>2. Explorar y hacer tu primera consulta</h3>
+<ol>
+<li>Haz click en <strong>Explore</strong> (icono de brújula en el menú izquierdo).</li>
+<li>Verifica que el datasource sea <strong>Loki</strong> (selector arriba a la izquierda).</li>
+<li>En el editor de consultas, escribe: <code>{job="nginx_access"}</code></li>
+<li>Presiona <strong>Shift + Enter</strong> o click en <strong>Run query</strong>.</li>
+<li>Deberías ver tus logs listados abajo. Si no ves nada:
+<ul>
+<li>Verifica que el archivo <code>logs/access.log</code> exista y tenga contenido</li>
+<li>Espera 10 segundos (Promtail tarda un poco en procesar)</li>
+<li>Intenta de nuevo</li>
+</ul>
+</li>
+</ol>
+
+<h3>3. Crear un dashboard simple</h3>
+<ol>
+<li>Haz click en el <strong>+</strong> en el menú izquierdo → <strong>Dashboard</strong>.</li>
+<li>Haz click en <strong>Add visualization</strong>.</li>
+<li>Selecciona <strong>Loki</strong> como datasource.</li>
+<li>En el editor, escribe una consulta que cuente logs por código de estado:
+<div class="code" style="margin-top:.8rem"><pre><code>sum by (status) (count_over_time({job="nginx_access"}[5m]))</code></pre></div>
+</li>
+<li>Haz click en <strong>Run query</strong>. Deberías ver un gráfico con los códigos de estado.</li>
+<li>Cambia el tipo de visualización a <strong>Table</strong> o <strong>Pie chart</strong> desde el selector arriba a la derecha.</li>
+<li>Haz click en <strong>Save dashboard</strong> arriba a la derecha para guardar.</li>
+</ol>
+
+<div class="note tip">
+<span class="note-label">Próximos pasos en Grafana</span>
+<p>Una vez que tienes datos fluyendo, puedes:</p>
+<ul style="margin:1rem 0 0">
+<li><strong>Alertas:</strong> Setup → Alerting → New alert rule</li>
+<li><strong>Dashboards más complejos:</strong> Importa dashboards de Grafana.com (Dashboards → Browse)</li>
+<li><strong>Múltiples datasources:</strong> Crea dashboards que crucen datos de Prometheus + Loki</li>
+</ul>
+</div>
+
+<h3>Captura de pantallas para referencia</h3>
+<p>Para tomar capturas que documenten tu configuración:</p>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Pantalla</th><th>Cómo capturarla</th><th>Qué mostrar</th></tr></thead>
+<tbody>
+<tr><td data-label="Pantalla"><strong>Explore</strong></td><td class="d" data-label="Cómo capturarla">Connections → Loki → Estado de conexión</td><td class="d" data-label="Qué mostrar">Botón verde "Connected" indicando que Loki responde</td></tr>
+<tr><td data-label="Pantalla"><strong>Primera consulta</strong></td><td class="d" data-label="Cómo capturarla">Explore → escribe <code>{job="nginx_access"}</code> → Run query</td><td class="d" data-label="Qué mostrar">Los logs listados y el número de coincidencias</td></tr>
+<tr><td data-label="Pantalla"><strong>Dashboard gráfico</strong></td><td class="d" data-label="Cómo capturarla">Crea un dashboard con <code>sum by (status) (…)</code></td><td class="d" data-label="Qué mostrar">Gráfico o tabla con códigos de estado distribuidos</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="note warn">
+<span class="note-label">Si Loki no aparece en datasources</span>
+<p>Recarga la página (Ctrl+R o Cmd+R). El provisioning se ejecuta al arrancar, así que a veces necesita una recarga para ver el datasource.</p>
 </div>
 
 </div>

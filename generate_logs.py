@@ -1,43 +1,86 @@
-import os
+#!/usr/bin/env python3
+"""
+Generador de logs de ejemplo para la guía Loki de Cero a Query.
+
+Este script genera un archivo access.log con líneas de ejemplo que puedes
+usar para probar la ingesta en Loki. Útil para el quickstart.
+
+Uso:
+    python3 generate_logs.py
+    python3 generate_logs.py --count 100  # genera 100 líneas
+    python3 generate_logs.py --output ./logs/custom.log
+"""
+
 import random
-from datetime import datetime, timedelta
+import datetime
+import argparse
+from pathlib import Path
 
-methods = ["GET", "POST", "PUT", "DELETE"]
-statuses = [200, 200, 200, 200, 404, 500, 301]
-endpoints = ["/api/v1/users", "/login", "/dashboard", "/checkout", "/products"]
+# IPs de clientes típicas
+IPS = [f"192.168.1.{100+i}" for i in range(10)] + [
+    "10.0.0.5", "10.0.0.15", "172.16.0.20"
+]
 
-# Ajusta el volumen aqui. 200k lineas ya dan una demo rica y se ingieren
-# en segundos; 5M tardan bastante y no aportan nada a la demo.
-TOTAL_LINES = 200_000
-DAYS_BACK = 30
-OUT = "./logs/access.log"
+# Endpoints de una API típica
+ENDPOINTS = [
+    "/", "/api/v1/login", "/api/v1/logout", "/api/v1/users",
+    "/api/v1/products", "/api/v1/orders", "/checkout",
+    "/checkout/confirm", "/product/widget-blue", "/search?q=loki",
+    "/admin/dashboard", "/health",
+]
 
-print(f"Generando {TOTAL_LINES:,} logs ORDENADOS cronologicamente...")
+# Métodos HTTP
+METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"]
 
-end_date = datetime.now()
-start_date = end_date - timedelta(days=DAYS_BACK)
-date_range_seconds = int((end_date - start_date).total_seconds())
+# Códigos HTTP con frecuencia
+STATUS_CODES = [
+    (200, 60), (201, 10), (204, 5), (301, 5), (302, 5),
+    (400, 5), (401, 3), (403, 2), (404, 10), (500, 2),
+    (502, 1), (503, 1),
+]
 
-# CLAVE: los timestamps se ordenan antes de escribir.
-# Promtail envia en orden de archivo; si el archivo esta barajado, el stream
-# de Loki avanza a "ahora" en las primeras lineas y luego rechaza todo lo
-# viejo con "entry too far behind".
-offsets = sorted(random.randint(0, date_range_seconds) for _ in range(TOTAL_LINES))
+def weighted_choice(choices):
+    items, weights = zip(*choices)
+    total = sum(weights)
+    r = random.uniform(0, total)
+    current = 0
+    for item, weight in choices:
+        current += weight
+        if r <= current:
+            return item
+    return items[-1]
 
-os.makedirs("./logs", exist_ok=True)
-with open(OUT, "w") as f:  # 'w', no 'a': no acumular entre corridas
-    for offset in offsets:
-        ip = f"192.168.1.{random.randint(1, 255)}"
-        method = random.choice(methods)
-        endpoint = random.choice(endpoints)
-        status = random.choice(statuses)
-        bytes_sent = random.randint(200, 5000)
+def generate_log_line(timestamp=None):
+    if timestamp is None:
+        timestamp = datetime.datetime.now()
+    ip = random.choice(IPS)
+    method = random.choice(METHODS)
+    endpoint = random.choice(ENDPOINTS)
+    status = weighted_choice(STATUS_CODES)
+    bytes_sent = random.randint(100, 50000) if status != 204 else 0
+    ts_str = timestamp.strftime("%d/%b/%Y:%H:%M:%S +0000")
+    return f'{ip} - - [{ts_str}] "{method} {endpoint} HTTP/1.1" {status} {bytes_sent}\n'
 
-        log_date = start_date + timedelta(seconds=offset)
-        log_date_text = log_date.strftime("%d/%b/%Y:%H:%M:%S +0000")
-        f.write(
-            f'{ip} - - [{log_date_text}] "{method} {endpoint} HTTP/1.1" '
-            f'{status} {bytes_sent}\n'
-        )
+def main():
+    parser = argparse.ArgumentParser(description="Genera logs para Loki")
+    parser.add_argument("--count", "-c", type=int, default=50, help="Líneas a generar")
+    parser.add_argument("--output", "-o", default="./logs/access.log", help="Archivo de salida")
+    parser.add_argument("--minutes", "-m", type=int, default=1, help="Rango de tiempo")
+    args = parser.parse_args()
 
-print(f"Listo: {OUT}")
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    now = datetime.datetime.now()
+    with open(args.output, 'w') as f:
+        for i in range(args.count):
+            minutes_ago = (args.minutes * i) // args.count
+            seconds_ago = random.randint(0, 59)
+            ts = now - datetime.timedelta(minutes=minutes_ago, seconds=seconds_ago)
+            line = generate_log_line(ts)
+            f.write(line)
+
+    print(f"✓ Generados {args.count} logs en {args.output}")
+
+if __name__ == "__main__":
+    main()
