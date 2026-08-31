@@ -1168,6 +1168,53 @@ docker compose version</code></pre>
           <span class="k">status:</span></code></pre>
 </div>
 
+<h3>Pipeline: local vs producción</h3>
+<p>El pipeline define qué etapas procesa cada línea. En local lo haces a mano; en producción viene generado automáticamente por tu herramienta de infraestructura.</p>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">manual y sencillo</span></div>
+    <div class="env-body">
+      <p>Escribes un regex a mano y añades solo lo que necesitas: timestamp, status.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">local</span><span></span></div><pre><code><span class="k">pipeline_stages:</span>
+  - <span class="k">regex:</span>
+      <span class="k">expression:</span> <span class="s">'^\[(?P&lt;timestamp&gt;[^\]]+)\] (?P&lt;status&gt;[A-Z]+)'</span>
+  - <span class="k">timestamp:</span>
+      <span class="k">source:</span> <span class="v">timestamp</span>
+      <span class="k">format:</span> <span class="s">"2006-01-02 15:04:05"</span>
+  - <span class="k">labels:</span>
+      <span class="k">status:</span></code></pre></div>
+  </div>
+
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">generado, con validación</span></div>
+    <div class="env-body">
+      <p>Viene de Jsonnet, Helm, o un template. Incluye etapas extra como deduplicación, rate limiting, inyección de etiquetas del cluster.</p>
+    </div>
+<div class="code"><div class="code-bar"><span class="tag">producción</span><span></span></div><pre><code><span class="k">pipeline_stages:</span>
+  - <span class="k">multiline:</span> <span class="c"># agrupa trazas multi-línea</span>
+      <span class="k">line_start_pattern:</span> <span class="s">'^[0-9]{4}-[0-9]{2}-[0-9]{2}'</span>
+  - <span class="k">regex:</span>
+      <span class="k">expression:</span> <span class="s">'…tu regex…'</span>
+  - <span class="k">json:</span> <span class="c"># si es JSON</span>
+      <span class="k">expressions:</span> { <span class="k">level:</span> <span class="v">severity</span> }
+  - <span class="k">timestamp:</span> { <span class="k">source:</span> <span class="v">timestamp</span> }
+  - <span class="k">drop:</span> <span class="c"># descarta líneas ruidosas</span>
+      <span class="k">expression:</span> <span class="s">'health.check'</span>
+  - <span class="k">resource_detection:</span>
+      <span class="k">override:</span> <span class="v">false</span> <span class="c"># etiquetas del pod</span>
+  - <span class="k">labels:</span>
+      <span class="k">level:</span>
+      <span class="k">kubernetes_namespace:</span></code></pre></div>
+  </div>
+</div>
+
+<div class="note tip">
+<span class="note-label">Empezar simple</span>
+<p>En local: regex básico y timestamp. Una vez que el flujo anda, en producción te beneficia agregar validación, deduplicación y contexto de infraestructura.</p>
+</div>
+
 <h3>Las cuatro claves que importan</h3>
 
 <div class="anat">
@@ -1713,6 +1760,26 @@ sum by (project) (rate({job="proyectos", status=~"5.."}[5m]))</code></pre>
   <div class="anat-row"><div class="lab">Carpetas</div><div class="txt">El <code>folder</code> del proveedor de dashboards agrupa por equipo. Puedes declarar varios proveedores apuntando a subdirectorios distintos, cada uno con su carpeta.</div></div>
   <div class="anat-row"><div class="lab">Un dashboard, no diez</div><div class="txt">Con la variable <code>$project</code>, un único dashboard cubre todos los proyectos. Diez copias del mismo JSON son diez sitios donde arreglar el mismo fallo.</div></div>
   <div class="anat-row"><div class="lab">Enlaces</div><div class="txt">Los <em>data links</em> de un panel pueden llevar al dashboard de detalle del proyecto seleccionado, pasando <code>var-project=${__field.labels.project}</code>.</div></div>
+</div>
+
+<h3>Cómo escala cada opción en producción</h3>
+
+<div class="envs">
+  <div class="env env-local">
+    <div class="env-head">En local <span class="tag">pruebas en tu máquina</span></div>
+    <div class="env-body">
+      <p>Tienes dos o tres proyectos. Los paths están hardcodeados en el compose. Cambiar uno requiere editar el YAML.</p>
+      <p><strong>Elegir:</strong> opción A (más directo) o B (si crece rápido).</p>
+    </div>
+  </div>
+
+  <div class="env env-prod">
+    <div class="env-head">En producción <span class="tag">decenas de proyectos</span></div>
+    <div class="env-body">
+      <p><strong>Opción B</strong> gana automáticamente: es lo que permite autodescubrimiento. Un proyecto nuevo aparece sin tocar Promtail.</p>
+      <p><strong>Opción C</strong> solo si realmente necesitas que un equipo no pueda ver los logs de otro: el aislamiento cuesta accesibilidad cruzada.</p>
+    </div>
+  </div>
 </div>
 
 <h3>El presupuesto de cardinalidad se multiplica</h3>
