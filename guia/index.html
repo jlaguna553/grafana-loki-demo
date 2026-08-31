@@ -413,6 +413,7 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
   </div>
   <nav>
     <a href="#c0"><span class="n">00</span><span>Las tres piezas</span></a>
+    <a href="#quickstart"><span class="n">⚡</span><span>Quickstart</span></a>
     <a href="#c1"><span class="n">01</span><span>Levantar el stack</span></a>
     <a href="#c2"><span class="n">02</span><span>loki-config.yml</span></a>
     <a href="#c3"><span class="n">03</span><span>promtail-config.yml</span></a>
@@ -552,6 +553,151 @@ p code,li code,td code,.txt code{overflow-wrap:anywhere}
 </div>
 <figcaption>La diferencia no es de rendimiento, es de modelo. En Loki eliges por etiqueta y <em>luego</em> filtras por texto; nunca al revés.</figcaption>
 </figure>
+</div>
+</section>
+
+<!-- ================= QUICKSTART ================= -->
+<section class="chapter" id="quickstart">
+<div class="chapter-head">
+  <div class="chapter-num">Quickstart</div>
+  <h2>Primeros pasos: levanta el stack en 10 minutos</h2>
+</div>
+
+<div class="wrap">
+<p class="lead">Este tutorial te lleva de cero a tener Grafana consultando logs en tu máquina local. Copia y pega los comandos tal cual.</p>
+
+<h3>1. Requisitos previos</h3>
+<p>Comprueba que tienes instalado Docker con Compose:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>verifica</span></div>
+<pre><code>docker --version
+docker compose version</code></pre>
+</div>
+
+<p>Si el segundo comando no existe, actualiza Docker Desktop o instala el plugin Compose manualmente.</p>
+
+<h3>2. Descarga el código</h3>
+<p>Clona o descarga el repositorio:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>clon</span></div>
+<pre><code>git clone https://github.com/jlaguna553/grafana-loki-demo.git
+cd grafana-loki-demo</code></pre>
+</div>
+
+<p>O si prefieres descargar como ZIP: ve a <code>https://github.com/jlaguna553/grafana-loki-demo</code>, haz click en <strong>Code → Download ZIP</strong>, descomprime, y abre una terminal en esa carpeta.</p>
+
+<h3>3. Crea los directorios necesarios</h3>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>estructura</span></div>
+<pre><code>mkdir -p logs grafana/provisioning/{datasources,dashboards} grafana/dashboards promtail-data</code></pre>
+</div>
+
+<h3>4. Genera logs de ejemplo</h3>
+<p>Sin logs no hay nada que leer. Crea un archivo con líneas de ejemplo:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>genera datos</span></div>
+<pre><code>cat > logs/access.log <<'EOF'
+192.168.1.100 - - [27/Aug/2024:10:15:32 +0000] "GET /checkout HTTP/1.1" 200 5234
+192.168.1.101 - - [27/Aug/2024:10:15:33 +0000] "POST /api/login HTTP/1.1" 200 324
+192.168.1.102 - - [27/Aug/2024:10:15:34 +0000] "GET /checkout HTTP/1.1" 500 0
+192.168.1.103 - - [27/Aug/2024:10:15:35 +0000] "GET /product/123 HTTP/1.1" 404 89
+192.168.1.104 - - [27/Aug/2024:10:15:36 +0000] "POST /api/search HTTP/1.1" 200 1024
+EOF</code></pre>
+</div>
+
+<div class="note tip">
+<span class="note-label">Opción: generador continuo</span>
+<p>Si tienes Python, puedes generar logs constantemente en otra terminal y verlos aparecer en Grafana en tiempo real:</p>
+<div class="code" style="margin:.9rem 0 0">
+<pre><code>python3 <<'SCRIPT'
+import time, random, datetime
+ips = ["192.168.1." + str(100+i) for i in range(10)]
+endpoints = ["/", "/checkout", "/product/123", "/api/login", "/api/search"]
+while True:
+    ip = random.choice(ips)
+    endpoint = random.choice(endpoints)
+    status = random.choice([200, 200, 200, 404, 500])
+    timestamp = datetime.datetime.now().strftime("%d/%b/%Y:%H:%M:%S +0000")
+    print(f'{ip} - - [{timestamp}] "GET {endpoint} HTTP/1.1" {status} {random.randint(0, 5000)}')
+    time.sleep(0.5)
+SCRIPT</code></pre>
+</div>
+</div>
+
+<h3>5. Arranca el stack</h3>
+<p>Todo lo demás (docker-compose.yml, configs de Loki y Promtail) viene en el repositorio. Solo arrancar:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>inicia</span></div>
+<pre><code>docker compose up -d
+docker compose logs -f</code></pre>
+</div>
+
+<p>La primera línea levanta los contenedores. La segunda muestra los logs para que veas qué está pasando. Los contenedores estarán listos cuando veas:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">esperado</span><span></span></div>
+<pre><code>loki_1      | msg="Loki started"
+promtail_1  | Promtail started
+grafana_1   | <span class="c">info de arranque de Grafana…</span></code></pre>
+</div>
+
+<p>Presiona <code>Ctrl+C</code> para dejar de ver los logs, pero los contenedores siguen corriendo en background.</p>
+
+<h3>6. Verifica que Loki recibe logs</h3>
+<p>Haz una petición HTTP a Loki para confirmar que está escuchando:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">terminal</span><span>prueba</span></div>
+<pre><code>curl -s http://localhost:3100/ready</code></pre>
+</div>
+
+<p>Si responde <code>ready</code>, Loki está funcionando. Si no responde, espera 30 segundos y prueba de nuevo.</p>
+
+<h3>7. Abre Grafana en tu navegador</h3>
+<p>Entra a <code>http://localhost:3000</code> en cualquier navegador.</p>
+
+<div class="note key">
+<span class="note-label">Credenciales por defecto</span>
+<p><strong>Usuario:</strong> <code>admin</code><br><strong>Contraseña:</strong> <code>admin</code></p>
+<p>La primera vez que entres te pedirá que cambies la contraseña. Puedes saltarte ese paso (el botón arriba a la derecha).</p>
+</div>
+
+<h3>8. Consulta los logs</h3>
+<p>Haz una primera consulta de logs:</p>
+
+<ol>
+<li>Haz click en <strong>Explore</strong> (el icono de brújula en el menú de la izquierda).</li>
+<li>Verifica que el datasource es <strong>Loki</strong> (selector arriba a la izquierda). Si aparece vacío, recarga la página.</li>
+<li>Escribe esta consulta en el campo de abajo:
+<div class="code" style="margin-top:.8rem"><pre><code>{job="nginx_access"}</code></pre></div>
+</li>
+<li>Presiona <strong>Shift + Enter</strong> o haz click en <strong>Run query</strong>. Deberías ver las 5 líneas que creaste en el paso 4.</li>
+</ol>
+
+<div class="note tip">
+<span class="note-label">Siguiente paso</span>
+<p>Si ves los logs, ¡felicidades! Ahora salta al <strong>capítulo 6 (LogQL desde cero)</strong> para aprender a hacer consultas más interesantes. O lee el <strong>capítulo 2</strong> para entender línea por línea qué hace cada configuración.</p>
+</div>
+
+<h3>Si algo no funciona</h3>
+
+<div class="tbl">
+<table>
+<thead><tr><th>Problema</th><th>Solución</th></tr></thead>
+<tbody>
+<tr><td data-label="Problema"><code>permission denied</code> en /tmp/loki</td><td class="d" data-label="Solución">Ejecuta el comando que aparece en el capítulo anterior sobre permisos de volumen.</td></tr>
+<tr><td data-label="Problema">Grafana no muestra datasource Loki</td><td class="d" data-label="Solución">Recarga el navegador. Los provisioning se ejecutan al arrancar, así que a veces necesita una recarga.</td></tr>
+<tr><td data-label="Problema">Promtail no envía logs a Loki</td><td class="d" data-label="Solución">Comprueba que la carpeta <code>logs/</code> tiene el archivo <code>access.log</code>. Sin archivo no hay nada que leer.</td></tr>
+<tr><td data-label="Problema">Puerto 3000 o 3100 ya están en uso</td><td class="d" data-label="Solución">Cambia los puertos en <code>docker-compose.yml</code>: busca <code>ports:</code> y modifica el número de la izquierda. Por ejemplo: <code>"3001:3000"</code>.</td></tr>
+</tbody>
+</table>
+</div>
+
 </div>
 </section>
 
