@@ -647,6 +647,137 @@ python3 generate_logs.py --count 100 --minutes 5</code></pre>
   <div class="anat-row"><div class="lab">generate_logs_realtime.py</div><div class="txt">Genera líneas continuamente en tiempo real. Abre otra terminal y déjalo corriendo mientras usas Grafana. Presiona Ctrl+C para detener. Soporta <code>--interval</code> (segundos entre logs).</div></div>
 </div>
 
+<h3>Código del generador de logs estático (generate_logs.py)</h3>
+<p>Copia este código en un archivo llamado <code>generate_logs.py</code> en la raíz del proyecto:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">generate_logs.py</span><span>copiar y pegar</span></div>
+<pre><code><span class="c">#!/usr/bin/env python3</span>
+<span class="c">"""Generador de logs de ejemplo para Loki"""</span>
+
+<span class="k">import</span> random, datetime, argparse
+<span class="k">from</span> pathlib <span class="k">import</span> Path
+
+IPS = [<span class="s">f"192.168.1.{100+i}"</span> <span class="k">for</span> i <span class="k">in</span> range(10)] + [<span class="s">"10.0.0.5"</span>, <span class="s">"10.0.0.15"</span>]
+ENDPOINTS = [<span class="s">"/"</span>, <span class="s">"/api/v1/login"</span>, <span class="s">"/api/v1/logout"</span>, <span class="s">"/api/v1/users"</span>,
+             <span class="s">"/api/v1/products"</span>, <span class="s">"/api/v1/orders"</span>, <span class="s">"/checkout"</span>,
+             <span class="s">"/checkout/confirm"</span>, <span class="s">"/product/widget-blue"</span>, <span class="s">"/search?q=loki"</span>]
+METHODS = [<span class="s">"GET"</span>, <span class="s">"POST"</span>, <span class="s">"PUT"</span>, <span class="s">"DELETE"</span>]
+STATUS_CODES = [(200, 60), (201, 10), (204, 5), (301, 5), (302, 5),
+                (400, 5), (401, 3), (403, 2), (404, 10), (500, 2), (502, 1), (503, 1)]
+
+<span class="k">def</span> weighted_choice(choices):
+    items, weights = zip(*choices)
+    total = sum(weights)
+    r = random.uniform(0, total)
+    current = 0
+    <span class="k">for</span> item, weight <span class="k">in</span> choices:
+        current += weight
+        <span class="k">if</span> r &lt;= current: <span class="k">return</span> item
+    <span class="k">return</span> items[-1]
+
+<span class="k">def</span> generate_log_line(timestamp=<span class="k">None</span>):
+    <span class="k">if</span> timestamp <span class="k">is</span> <span class="k">None</span>: timestamp = datetime.datetime.now()
+    ip = random.choice(IPS)
+    method = random.choice(METHODS)
+    endpoint = random.choice(ENDPOINTS)
+    status = weighted_choice(STATUS_CODES)
+    bytes_sent = random.randint(100, 50000) <span class="k">if</span> status != 204 <span class="k">else</span> 0
+    ts_str = timestamp.strftime(<span class="s">"%d/%b/%Y:%H:%M:%S +0000"</span>)
+    <span class="k">return</span> <span class="s">f'{ip} - - [{ts_str}] "{method} {endpoint} HTTP/1.1" {status} {bytes_sent}\n'</span>
+
+<span class="k">def</span> main():
+    parser = argparse.ArgumentParser(description=<span class="s">"Genera logs para Loki"</span>)
+    parser.add_argument(<span class="s">"--count"</span>, <span class="s">"-c"</span>, type=<span class="k">int</span>, default=50, help=<span class="s">"Líneas a generar"</span>)
+    parser.add_argument(<span class="s">"--output"</span>, <span class="s">"-o"</span>, default=<span class="s">"./logs/access.log"</span>, help=<span class="s">"Archivo de salida"</span>)
+    parser.add_argument(<span class="s">"--minutes"</span>, <span class="s">"-m"</span>, type=<span class="k">int</span>, default=1, help=<span class="s">"Rango de tiempo"</span>)
+    args = parser.parse_args()
+
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=<span class="k">True</span>, exist_ok=<span class="k">True</span>)
+
+    now = datetime.datetime.now()
+    <span class="k">with</span> open(args.output, <span class="s">'w'</span>) <span class="k">as</span> f:
+        <span class="k">for</span> i <span class="k">in</span> range(args.count):
+            minutes_ago = (args.minutes * i) // args.count
+            seconds_ago = random.randint(0, 59)
+            ts = now - datetime.timedelta(minutes=minutes_ago, seconds=seconds_ago)
+            line = generate_log_line(ts)
+            f.write(line)
+
+    print(<span class="s">f"✓ Generados {args.count} logs en {args.output}"</span>)
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    main()</code></pre>
+</div>
+
+<h3>Código del generador en tiempo real (generate_logs_realtime.py)</h3>
+<p>Copia este código en un archivo llamado <code>generate_logs_realtime.py</code>:</p>
+
+<div class="code">
+<div class="code-bar"><span class="tag">generate_logs_realtime.py</span><span>copiar y pegar</span></div>
+<pre><code><span class="c">#!/usr/bin/env python3</span>
+<span class="c">"""Generador de logs en tiempo real para Loki"""</span>
+
+<span class="k">import</span> random, datetime, time, argparse
+<span class="k">from</span> pathlib <span class="k">import</span> Path
+
+IPS = [<span class="s">f"192.168.1.{100+i}"</span> <span class="k">for</span> i <span class="k">in</span> range(10)] + [<span class="s">"10.0.0.5"</span>, <span class="s">"10.0.0.15"</span>]
+ENDPOINTS = [<span class="s">"/"</span>, <span class="s">"/api/v1/login"</span>, <span class="s">"/api/v1/logout"</span>, <span class="s">"/api/v1/users"</span>,
+             <span class="s">"/api/v1/products"</span>, <span class="s">"/api/v1/orders"</span>, <span class="s">"/checkout"</span>, <span class="s">"/checkout/confirm"</span>]
+METHODS = [<span class="s">"GET"</span>, <span class="s">"POST"</span>, <span class="s">"PUT"</span>, <span class="s">"DELETE"</span>]
+STATUS_CODES = [200, 200, 200, 201, 400, 404, 500]
+
+<span class="k">def</span> generate_log_line():
+    ip = random.choice(IPS)
+    method = random.choice(METHODS)
+    endpoint = random.choice(ENDPOINTS)
+    status = random.choice(STATUS_CODES)
+    bytes_sent = random.randint(100, 50000)
+    ts = datetime.datetime.now().strftime(<span class="s">"%d/%b/%Y:%H:%M:%S +0000"</span>)
+    <span class="k">return</span> <span class="s">f'{ip} - - [{ts}] "{method} {endpoint} HTTP/1.1" {status} {bytes_sent}\n'</span>
+
+<span class="k">def</span> main():
+    parser = argparse.ArgumentParser(description=<span class="s">"Genera logs en tiempo real"</span>)
+    parser.add_argument(<span class="s">"--interval"</span>, <span class="s">"-i"</span>, type=<span class="k">float</span>, default=0.5, help=<span class="s">"Segundos entre logs"</span>)
+    parser.add_argument(<span class="s">"--file"</span>, <span class="s">"-f"</span>, default=<span class="s">"./logs/access.log"</span>, help=<span class="s">"Archivo de salida"</span>)
+    args = parser.parse_args()
+
+    output_path = Path(args.file)
+    output_path.parent.mkdir(parents=<span class="k">True</span>, exist_ok=<span class="k">True</span>)
+
+    print(<span class="s">f"📝 Generando logs en {args.file}"</span>)
+    print(<span class="s">"   Presiona Ctrl+C para detener\n"</span>)
+
+    <span class="k">try</span>:
+        <span class="k">with</span> open(args.file, <span class="s">'a'</span>) <span class="k">as</span> f:
+            count = 0
+            <span class="k">while</span> <span class="k">True</span>:
+                line = generate_log_line()
+                f.write(line)
+                f.flush()
+                count += 1
+                print(<span class="s">f"   [{count}] {line.strip()}"</span>)
+                time.sleep(args.interval)
+    <span class="k">except</span> KeyboardInterrupt:
+        print(<span class="s">f"\n✓ Detenido. Total: {count} líneas"</span>)
+
+<span class="k">if</span> __name__ == <span class="s">"__main__"</span>:
+    main()</code></pre>
+</div>
+
+<div class="note tip">
+<span class="note-label">Crear los archivos manualmente</span>
+<p>Si prefieres crearlos a mano en lugar de copiar desde el repo:</p>
+<ol style="margin:1rem 0 0">
+<li>Abre un editor de texto (VS Code, Sublime, Notepad, lo que uses)</li>
+<li>Copia el código de <strong>generate_logs.py</strong> arriba</li>
+<li>Guarda como <code>generate_logs.py</code> en la raíz de tu proyecto</li>
+<li>Repite con <strong>generate_logs_realtime.py</strong></li>
+<li>Ejecuta: <code>python3 generate_logs.py</code></li>
+</ol>
+</div>
+
 <h3>5. Arranca el stack</h3>
 <p>Todo lo demás (docker-compose.yml, configs de Loki y Promtail) viene en el repositorio. Solo arrancar:</p>
 
